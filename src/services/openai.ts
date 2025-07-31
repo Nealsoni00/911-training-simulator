@@ -311,16 +311,24 @@ export class VoiceService {
   }
 
   clearAudioQueue() {
+    console.log('🛑 Clearing audio queue - stopping all caller audio immediately');
     this.audioQueue = [];
     this.isPlaying = false;
     
-    // Clean up audio context if it exists to prevent memory leaks
+    // Forcibly stop any currently playing audio by suspending the audio context
     if (this.audioContext && this.audioContext.state !== 'closed') {
-      // Don't close the context, just suspend it to avoid recreation overhead
       if (this.audioContext.state === 'running') {
+        console.log('🛑 Suspending audio context to stop current playback');
         this.audioContext.suspend();
       }
+    } else if (this.audioContext && this.audioContext.state === 'suspended') {
+      // If already suspended, resume and suspend again to interrupt any pending audio
+      this.audioContext.resume().then(() => {
+        this.audioContext?.suspend();
+      });
     }
+    
+    console.log('✅ Audio queue cleared and playback stopped');
   }
 
   // Stream audio generation and playback for faster response
@@ -496,11 +504,19 @@ IF THE DISPATCHER SAYS SOMETHING CONFUSING OR OFF-TOPIC:
 - Show panic: "I don't know what you mean, I'm scared!"
 - Stay focused on YOUR crisis: "Can you please send the police?!"
 
+NATURAL SILENCE AND PAUSES:
+- Sometimes callers wait for the dispatcher to speak
+- You don't need to fill every silence
+- If asked to continue but have nothing to add, respond with just "..." to indicate waiting
+- Scared people sometimes go quiet
+- It's natural to pause after giving information
+- Don't repeat yourself unless truly panicked
+
 REMEMBER: You are the CALLER who needs help, NOT the dispatcher helping others!
 
 NEVER EVER BREAK CHARACTER. You are a real human in a real emergency calling 911.
 
-CRITICAL: Only respond with actual spoken words. NO stage directions, NO brackets, NO descriptive text like [whispering], [crying], [panicked]. Just speak naturally with emotion in your words.
+CRITICAL: Only respond with actual spoken words OR "..." for silence. NO stage directions, NO brackets, NO descriptive text like [whispering], [crying], [panicked]. Just speak naturally with emotion in your words or wait quietly.
 
 Current context: ${currentContext}`;
 

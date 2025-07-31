@@ -96,7 +96,17 @@
 
 .pending-text {
   font-style: italic;
-  animation: dots 1.5s infinite;
+}
+
+.typing-cursor {
+  animation: blink 1s infinite;
+  color: #ffc107;
+  font-weight: bold;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
 }
 
 @keyframes dots {

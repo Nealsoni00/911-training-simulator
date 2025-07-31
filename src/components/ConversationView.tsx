@@ -33,7 +33,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({ messages, is
         {pendingCallerMessage && (
           <div className="message caller pending">
             <span className="role">CALLER:</span>
-            <span className="content pending-text">Preparing response...</span>
+            <span className="content pending-text">{pendingCallerMessage}<span className="typing-cursor">|</span></span>
             <span className="timestamp">{new Date().toLocaleTimeString()}</span>
           </div>
         )}

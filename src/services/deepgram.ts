@@ -235,25 +235,52 @@ export class DeepgramService {
     }, delay);
   }
 
-  // Start real-time transcription
-  async startTranscription(): Promise<void> {
+  // Pre-warm the WebSocket connection
+  async preWarmConnection(): Promise<void> {
     try {
-      // Record start time for warmup period
+      console.log('🔥 Pre-warming Deepgram WebSocket connection...');
+      
+      // Just establish the WebSocket connection without starting audio
+      await this.connectWebSocket();
+      
+      console.log('✅ Deepgram WebSocket pre-warmed and ready');
+    } catch (error) {
+      console.error('❌ Failed to pre-warm Deepgram connection:', error);
+      // Don't throw - this is just optimization
+    }
+  }
+
+  // Start real-time transcription with optional existing stream
+  async startTranscription(existingStream?: MediaStream): Promise<void> {
+    try {
+      // Record start time
       this.startTime = Date.now();
       
-      // Connect to Deepgram WebSocket
-      await this.connectWebSocket();
+      // Connect to Deepgram WebSocket if not already connected
+      if (!this.isConnected) {
+        await this.connectWebSocket();
+      } else {
+        console.log('✅ Using pre-warmed Deepgram connection');
+      }
 
-      // Get user media with specific constraints for Deepgram
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          sampleRate: 16000,
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      });
+      let stream: MediaStream;
+      
+      if (existingStream) {
+        console.log('🎤 Using existing audio stream for Deepgram');
+        stream = existingStream;
+      } else {
+        console.log('🎤 Creating new audio stream for Deepgram');
+        // Get user media with specific constraints for Deepgram
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            sampleRate: 16000,
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+      }
 
       // Use Web Audio API to convert to raw PCM for Deepgram
       await this.setupAudioProcessing(stream);
@@ -271,14 +298,14 @@ export class DeepgramService {
 
   // Set up Web Audio API processing for real-time PCM streaming
   private async setupAudioProcessing(stream: MediaStream): Promise<void> {
-    const audioContext = new AudioContext({
-      sampleRate: 16000
-    });
+    // Create AudioContext with standard sample rate to avoid resampling issues
+    const audioContext = new AudioContext();
 
     const source = audioContext.createMediaStreamSource(stream);
     
     // Create a ScriptProcessorNode for real-time audio processing
-    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+    // Use smaller buffer size (1024) for lower latency at start
+    const processor = audioContext.createScriptProcessor(1024, 1, 1);
     
     processor.onaudioprocess = (event) => {
       if (this.websocket && this.isConnected) {

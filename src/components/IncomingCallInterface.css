@@ -4,12 +4,13 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #0d1117 0%, #1a1f2e 100%);
+  background: rgba(13, 17, 23, 0.95);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  animation: fadeIn 0.5s ease-out;
+  animation: fadeIn 0.3s ease-out;
 }
 
 .incoming-call-interface {
@@ -173,11 +174,18 @@
   line-height: 1.4;
 }
 
-.call-buttons {
+.call-actions {
   display: flex;
   justify-content: center;
-  gap: 20px;
-  margin-bottom: 15px;
+  gap: 40px;
+  margin-top: 20px;
+}
+
+.action-button-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 .answer-button,
@@ -240,21 +248,11 @@
   transform: rotate(135deg);
 }
 
-.button-labels {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 12px;
-  width: 160px; /* Match the button container width */
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.decline-label,
-.answer-label {
-  font-size: 13px;
+.button-label {
+  font-size: 14px;
   font-weight: 600;
   text-align: center;
-  width: 70px;
+  margin-top: 4px;
 }
 
 .decline-label {
@@ -303,11 +301,9 @@
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: scale(0.9);
   }
   to {
     opacity: 1;
-    transform: scale(1);
   }
 }
 

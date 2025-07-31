@@ -83,6 +83,31 @@ function App() {
     } else {
       setAppState('incoming-call');
     }
+    
+    // Pre-warm Deepgram and audio services while showing incoming call
+    console.log('🔥 Pre-warming Deepgram and audio services...');
+    await initializeServicesEarly();
+    
+    // Pre-warm the microphone analyzer
+    await setupMicrophoneAnalyser();
+    
+    // Pre-warm Deepgram connection but don't start transcription yet
+    if (!deepgramServiceRef.current) {
+      deepgramServiceRef.current = new DeepgramService();
+      
+      // Set up callbacks early so they're ready when transcription starts
+      if (!deepgramServiceRef.current.hasCallbacks) {
+        setupDeepgramCallbacks();
+      }
+    }
+    
+    // Pre-establish Deepgram WebSocket connection
+    try {
+      console.log('🔥 Pre-establishing Deepgram WebSocket connection...');
+      await deepgramServiceRef.current.preWarmConnection();
+    } catch (error) {
+      console.warn('⚠️ Failed to pre-warm Deepgram:', error);
+    }
   };
 
   const handleCreateNew = () => {
@@ -537,6 +562,12 @@ function App() {
         selectedPreset.realTranscript,
         cadAddresses, // Always pass addresses (we ensure they're available above)
         (token: string) => {
+          // Check if we've been interrupted - stop processing if so
+          if (!isRunningRef.current || isPausedRef.current || !isProcessingRef.current) {
+            console.log('🛑 Streaming interrupted - stopping token processing');
+            return;
+          }
+          
           // Handle streaming tokens - clean as we go
           fullResponse += token;
           // Show cleaned version in real-time for consistency
@@ -548,6 +579,18 @@ function App() {
           setPendingCallerMessage(cleanedForDisplay);
         },
         async (sentence: string) => {
+          // Check if we've been interrupted - stop processing if so
+          if (!isRunningRef.current || isPausedRef.current || !isProcessingRef.current) {
+            console.log('🛑 Sentence generation interrupted - stopping audio processing');
+            return;
+          }
+          
+          // Check if sentence indicates silence
+          if (sentence.trim() === '...' || sentence.trim() === '') {
+            console.log('🤫 Caller choosing silence - not generating audio');
+            return;
+          }
+          
           // Queue sentences for ordered processing
           console.log('📝 Queueing sentence:', sentence);
           sentenceQueue.push({ text: sentence, audioBuffer: undefined });
@@ -564,7 +607,7 @@ function App() {
           if (!isProcessingQueue && sentenceQueue.length === 1) {
             // Give a tiny delay to allow for potential batching, then start
             setTimeout(() => {
-              if (!isProcessingQueue) {
+              if (!isProcessingQueue && isProcessingRef.current) { // Double-check we're still processing
                 processNextSentence();
               }
             }, 50);
@@ -573,14 +616,18 @@ function App() {
       );
       
       // Final message update with complete cleaned response
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'caller',
-          content: cleanedFullResponse || response, // Use cleaned version if available
-          timestamp: new Date()
-        }
-      ]);
+      // Only add to messages if there's actual content (not just silence)
+      const finalContent = cleanedFullResponse || response;
+      if (finalContent && finalContent.trim() !== '...' && finalContent.trim() !== '') {
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'caller',
+            content: finalContent,
+            timestamp: new Date()
+          }
+        ]);
+      }
       
       // Safety timeout to ensure speaking animation stops even if callbacks fail
       setTimeout(() => {
@@ -602,6 +649,83 @@ function App() {
         cadAddresses // Always pass addresses (we ensure they're available above)
       );
     }
+  };
+
+  const setupDeepgramCallbacks = () => {
+    if (!deepgramServiceRef.current) return;
+    
+    deepgramServiceRef.current.onTranscript(async (operatorTranscript: string, isFinal: boolean) => {
+      console.log('🎯 App received transcript:', operatorTranscript, 'isFinal:', isFinal);
+      
+      if (!isFinal) {
+        setPartialTranscript(operatorTranscript);
+        
+        if (isCallerSpeaking && operatorTranscript.trim().length > 2) {
+          console.log('🚨 Dispatcher interrupting with partial speech:', operatorTranscript);
+          // Clear all caller audio immediately
+          voiceServiceRef.current?.clearAudioQueue();
+          setIsCallerSpeaking(false);
+          isProcessingRef.current = false;
+          
+          // Clear any timeout that might restart caller speech
+          if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current);
+            silenceTimeoutRef.current = null;
+          }
+          
+          // Keep the pending message visible momentarily, then clear
+          setTimeout(() => {
+            setPendingCallerMessage('');
+          }, 500);
+        }
+      } else {
+        setPartialTranscript('');
+        console.log('✅ Final Deepgram transcript:', operatorTranscript);
+        
+        // Clear any caller audio/messages when dispatcher speaks (even final transcript)
+        if (isCallerSpeaking) {
+          console.log('🚨 Dispatcher interrupting caller with final speech - clearing caller audio');
+          voiceServiceRef.current?.clearAudioQueue();
+          setIsCallerSpeaking(false);
+          
+          // Clear any timeout that might restart caller speech
+          if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current);
+            silenceTimeoutRef.current = null;
+          }
+          
+          // Keep the pending message visible momentarily, then clear
+          setTimeout(() => {
+            setPendingCallerMessage('');
+          }, 500);
+        }
+        
+        if (!isPausedRef.current && !isProcessingRef.current && operatorTranscript.trim()) {
+          // Process transcript immediately - no buffering delays
+          console.log('🔄 Processing transcript immediately:', operatorTranscript);
+          await handleFinalTranscript(operatorTranscript);
+        }
+      }
+    });
+
+    deepgramServiceRef.current.onError((error: string) => {
+      console.error('Deepgram error:', error);
+      setIsRecording(false);
+      
+      // Only retry if we haven't exceeded retry attempts
+      if (deepgramServiceRef.current && deepgramServiceRef.current.reconnectAttempts < 3) {
+        setTimeout(() => {
+          if (isRunningRef.current && !isPausedRef.current && !isProcessingRef.current) {
+            console.log('🔄 Retrying Deepgram connection...');
+            startDeepgramTranscription();
+          }
+        }, 3000);
+      } else {
+        console.error('❌ Max Deepgram reconnection attempts reached');
+      }
+    });
+
+    deepgramServiceRef.current.hasCallbacks = true;
   };
 
   const setupMicrophoneAnalyser = async () => {
@@ -705,54 +829,14 @@ function App() {
     console.log('🎯 Starting Deepgram transcription...');
 
     try {
-      // Only set up callbacks once when the service is created
+      // Set up callbacks if not already done
       if (!deepgramServiceRef.current.hasCallbacks) {
-        deepgramServiceRef.current.onTranscript(async (operatorTranscript: string, isFinal: boolean) => {
-          console.log('🎯 App received transcript:', operatorTranscript, 'isFinal:', isFinal);
-          
-          if (!isFinal) {
-            setPartialTranscript(operatorTranscript);
-            
-            if (isCallerSpeaking && operatorTranscript.trim().length > 2) {
-              console.log('🚨 Dispatcher interrupting with partial speech:', operatorTranscript);
-              voiceServiceRef.current?.clearAudioQueue();
-              setIsCallerSpeaking(false);
-              isProcessingRef.current = false;
-            }
-          } else {
-            setPartialTranscript('');
-            console.log('✅ Final Deepgram transcript:', operatorTranscript);
-            
-            if (!isPausedRef.current && !isProcessingRef.current && operatorTranscript.trim()) {
-              // Process transcript immediately - no buffering delays
-              console.log('🔄 Processing transcript immediately:', operatorTranscript);
-              await handleFinalTranscript(operatorTranscript);
-            }
-          }
-        });
-
-        deepgramServiceRef.current.onError((error: string) => {
-          console.error('Deepgram error:', error);
-          setIsRecording(false);
-          
-          // Only retry if we haven't exceeded retry attempts
-          if (deepgramServiceRef.current && deepgramServiceRef.current.reconnectAttempts < 3) {
-            setTimeout(() => {
-              if (isRunningRef.current && !isPausedRef.current && !isProcessingRef.current) {
-                console.log('🔄 Retrying Deepgram connection...');
-                startDeepgramTranscription();
-              }
-            }, 3000);
-          } else {
-            console.error('❌ Max Deepgram reconnection attempts reached');
-          }
-        });
-
-        deepgramServiceRef.current.hasCallbacks = true;
+        setupDeepgramCallbacks();
       }
 
       console.log('🚀 Calling deepgramService.startTranscription()...');
-      await deepgramServiceRef.current.startTranscription();
+      // Pass the existing microphone stream if available to avoid multiple getUserMedia calls
+      await deepgramServiceRef.current.startTranscription(micStreamRef.current || undefined);
       setIsRecording(true);
       setDeepgramStatus(deepgramServiceRef.current.connectionStatus);
       console.log('✅ Started Deepgram transcription successfully');
@@ -854,12 +938,21 @@ function App() {
       }
 
       const continuationPrompt = selectedPreset.config.cooperationLevel < 30 
-        ? "The dispatcher hasn't responded. You're panicked - repeat urgently or add more panicked details."
+        ? "The dispatcher hasn't responded. As a panicked caller, decide whether to: 1) repeat urgently, 2) add more details, or 3) wait in scared silence. Only speak if it's natural for a panicked person in this situation. You can respond with just '...' to indicate silent waiting."
         : selectedPreset.config.cooperationLevel < 70
-        ? "The dispatcher hasn't responded. Add more information or ask if they're still there."
-        : "The dispatcher hasn't responded. Politely check if they heard you or provide additional helpful details.";
+        ? "The dispatcher hasn't responded. Decide whether to: 1) add more information, 2) ask if they're still there, or 3) wait quietly. Only speak if it feels natural in this emergency. You can respond with just '...' to indicate waiting."
+        : "The dispatcher hasn't responded. Decide whether to: 1) politely check if they heard you, 2) provide additional details, or 3) wait patiently. Only speak if appropriate. You can respond with just '...' to indicate silent waiting.";
 
       const callerResponse = await generateEnhancedCallerResponse(continuationPrompt, true);
+      
+      // Check if the response indicates silence (just dots or very short)
+      const trimmedResponse = callerResponse.trim();
+      if (trimmedResponse === '...' || trimmedResponse === '' || trimmedResponse.length < 3) {
+        console.log('🤫 Caller choosing to wait in silence');
+        // Don't generate audio or show message for silence
+        setPendingCallerMessage('');
+        return;
+      }
       
       // The streaming callbacks handle audio generation and message updates
       // Just wait a bit for completion
