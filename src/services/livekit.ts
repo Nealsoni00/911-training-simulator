@@ -50,26 +50,39 @@ export class LiveKitService {
   private async generateAccessToken(roomName: string, participantName: string): Promise<string> {
     console.log('🔑 Generating access token...');
     
-    // Check all environment variables
-    const wsUrl = process.env.REACT_APP_LIVEKIT_WS_URL;
-    const apiKey = process.env.REACT_APP_LIVEKIT_API_KEY;
-    const apiSecret = process.env.REACT_APP_LIVEKIT_API_SECRET;
-    const preGeneratedToken = process.env.REACT_APP_LIVEKIT_TOKEN;
-    
-    console.log('📋 Environment check:');
-    console.log('  - WS URL:', wsUrl ? '✓ Set' : '❌ Missing');
-    console.log('  - API Key:', apiKey ? '✓ Set' : '❌ Missing');
-    console.log('  - API Secret:', apiSecret ? '✓ Set' : '❌ Missing');
-    console.log('  - Pre-generated Token:', preGeneratedToken ? '✓ Set' : '❌ Missing');
+    // Fetch LiveKit configuration from backend
+    try {
+      const response = await fetch('/api/livekit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'getConfig' })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch LiveKit configuration');
+      }
+      
+      const config = await response.json();
+      const { wsUrl, apiKey, apiSecret, token: preGeneratedToken } = config;
+      
+      console.log('📋 Environment check:');
+      console.log('  - WS URL:', wsUrl ? '✓ Set' : '❌ Missing');
+      console.log('  - API Key:', apiKey ? '✓ Set' : '❌ Missing');
+      console.log('  - API Secret:', apiSecret ? '✓ Set' : '❌ Missing');
+      console.log('  - Pre-generated Token:', preGeneratedToken ? '✓ Set' : '❌ Missing');
 
-    // For now, we'll use a pre-generated token from environment
-    // This is not secure for production but works for development
-    if (preGeneratedToken) {
-      console.log('🎫 Using pre-generated token');
-      return preGeneratedToken;
+      // For now, we'll use a pre-generated token from environment
+      // This is not secure for production but works for development
+      if (preGeneratedToken) {
+        console.log('🎫 Using pre-generated token');
+        return preGeneratedToken;
+      }
+
+      throw new Error('Please provide LIVEKIT_TOKEN in your environment variables. Generate one at https://livekit.io/token-generator');
+    } catch (error) {
+      console.error('Failed to fetch LiveKit config:', error);
+      throw error;
     }
-
-    throw new Error('Please provide REACT_APP_LIVEKIT_TOKEN in your environment variables. Generate one at https://livekit.io/token-generator');
   }
 
   // Connect to LiveKit room
@@ -78,7 +91,19 @@ export class LiveKitService {
       throw new Error('Room not initialized');
     }
 
-    const wsUrl = process.env.REACT_APP_LIVEKIT_WS_URL;
+    // Fetch WS URL from backend config
+    const configResponse = await fetch('/api/livekit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'getConfig' })
+    });
+    
+    if (!configResponse.ok) {
+      throw new Error('Failed to fetch LiveKit configuration');
+    }
+    
+    const config = await configResponse.json();
+    const wsUrl = config.wsUrl;
     if (!wsUrl) {
       throw new Error('LiveKit WebSocket URL must be provided in environment variables');
     }

@@ -1,10 +1,68 @@
-import OpenAI from 'openai';
 import { LiveKitService } from './livekit';
 
-const openai = new OpenAI({
-  apiKey: process.env.REACT_APP_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true
-});
+// API client for OpenAI requests through our backend
+class OpenAIClient {
+  async createChatCompletion(params: any) {
+    const response = await fetch('/api/openai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params)
+    });
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  audio = {
+    speech: {
+      create: async (params: any) => {
+        const response = await fetch('/api/openai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            endpoint: 'audio.speech',
+            ...params
+          })
+        });
+        if (!response.ok) {
+          throw new Error(`OpenAI API error: ${response.statusText}`);
+        }
+        return {
+          arrayBuffer: () => response.arrayBuffer()
+        };
+      }
+    },
+    transcriptions: {
+      create: async (params: any) => {
+        // For file uploads, we'll need to handle this differently
+        // For now, keeping the structure
+        const formData = new FormData();
+        formData.append('file', params.file);
+        formData.append('model', params.model);
+        
+        const response = await fetch('/api/openai-transcribe', {
+          method: 'POST',
+          body: formData
+        });
+        if (!response.ok) {
+          throw new Error(`OpenAI API error: ${response.statusText}`);
+        }
+        return response.json();
+      }
+    }
+  };
+
+  chat = {
+    completions: {
+      create: async (params: any) => {
+        return this.createChatCompletion(params);
+      }
+    }
+  };
+}
+
+const openai = new OpenAIClient();
 
 export class VoiceService {
   private mediaRecorder: MediaRecorder | null = null;

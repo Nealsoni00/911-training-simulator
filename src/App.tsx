@@ -144,15 +144,26 @@ function App() {
       if (liveKitServiceRef.current) {
         console.log('Attempting to connect to LiveKit...');
         
-        // Check environment variables
-        const wsUrl = process.env.REACT_APP_LIVEKIT_WS_URL;
-        const token = process.env.REACT_APP_LIVEKIT_TOKEN;
+        // Fetch LiveKit configuration from backend
+        const configResponse = await fetch('/api/livekit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'getConfig' })
+        });
+        
+        if (!configResponse.ok) {
+          throw new Error('Failed to fetch LiveKit configuration');
+        }
+        
+        const config = await configResponse.json();
+        const wsUrl = config.wsUrl;
+        const token = config.token;
         
         if (!wsUrl) {
-          throw new Error('REACT_APP_LIVEKIT_WS_URL not configured');
+          throw new Error('LiveKit WS URL not configured');
         }
         if (!token) {
-          throw new Error('REACT_APP_LIVEKIT_TOKEN not configured');
+          throw new Error('LiveKit token not configured');
         }
         
         console.log('LiveKit config found - WS URL:', wsUrl);

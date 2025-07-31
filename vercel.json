@@ -1,27 +1,14 @@
 {
   "name": "911-training-simulator",
   "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "build"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ],
+  "buildCommand": "REACT_APP_OPENAI_API_KEY=$OPENAI_API_KEY REACT_APP_DEEPGRAM_API_KEY=$DEEPGRAM_API_KEY REACT_APP_LIVEKIT_API_KEY=$LIVEKIT_API_KEY REACT_APP_LIVEKIT_API_SECRET=$LIVEKIT_API_SECRET REACT_APP_LIVEKIT_TOKEN=$LIVEKIT_TOKEN npm run build",
+  "outputDirectory": "build",
   "env": {
-    "REACT_APP_OPENAI_API_KEY": "@openai-api-key",
-    "REACT_APP_DEEPGRAM_API_KEY": "@deepgram-api-key",
+    "OPENAI_API_KEY": "@openai-api-key",
+    "DEEPGRAM_API_KEY": "@deepgram-api-key",
     "REACT_APP_LIVEKIT_WS_URL": "@livekit-ws-url",
-    "REACT_APP_LIVEKIT_API_KEY": "@livekit-api-key",
-    "REACT_APP_LIVEKIT_API_SECRET": "@livekit-api-secret",
-    "REACT_APP_LIVEKIT_TOKEN": "@livekit-token"
+    "LIVEKIT_API_KEY": "@livekit-api-key",
+    "LIVEKIT_API_SECRET": "@livekit-api-secret",
+    "LIVEKIT_TOKEN": "@livekit-token"
   }
 }

@@ -8,12 +8,10 @@ export class DeepgramService {
   private maxReconnectAttempts: number = 3;
   private reconnectDelay: number = 1000;
 
+  private apiKey: string | null = null;
+
   constructor() {
-    // Check for API key
-    const apiKey = process.env.REACT_APP_DEEPGRAM_API_KEY;
-    if (!apiKey) {
-      console.warn('⚠️ REACT_APP_DEEPGRAM_API_KEY not found. Please add it to your .env file');
-    }
+    // We'll fetch the API key from the backend when needed
   }
 
   // Set up callbacks
@@ -27,9 +25,30 @@ export class DeepgramService {
 
   // Connect to Deepgram WebSocket API
   private async connectWebSocket(): Promise<void> {
-    const apiKey = process.env.REACT_APP_DEEPGRAM_API_KEY;
+    // Fetch API key from backend if not already fetched
+    if (!this.apiKey) {
+      try {
+        const response = await fetch('/api/deepgram', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'getToken' })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch Deepgram API key');
+        }
+        
+        const data = await response.json();
+        this.apiKey = data.apiKey;
+      } catch (error) {
+        console.error('Failed to fetch Deepgram API key:', error);
+        throw new Error('Deepgram API key is required. Failed to fetch from server.');
+      }
+    }
+    
+    const apiKey = this.apiKey;
     if (!apiKey) {
-      throw new Error('Deepgram API key is required. Please set REACT_APP_DEEPGRAM_API_KEY in your environment.');
+      throw new Error('Deepgram API key is required.');
     }
 
     // Deepgram WebSocket URL with parameters for optimal 911 transcription
