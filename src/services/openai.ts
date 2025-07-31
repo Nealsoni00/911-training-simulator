@@ -1,87 +1,78 @@
+import OpenAI from 'openai';
 import { LiveKitService } from './livekit';
 
-// API client for OpenAI requests through our backend
-class OpenAIClient {
-  async createChatCompletion(params: any) {
-    const response = await fetch('/api/openai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(params)
+// Use direct OpenAI client for local development, API endpoints for production
+const getOpenAIClient = () => {
+  // Check if we have local environment variables (development)
+  const localApiKey = process.env.REACT_APP_OPENAI_API_KEY;
+  
+  if (localApiKey) {
+    console.log('🔑 Using local OpenAI API key for development');
+    return new OpenAI({
+      apiKey: localApiKey,
+      dangerouslyAllowBrowser: true
     });
-    if (!response.ok) {
-      if (response.status === 404 && process.env.NODE_ENV === 'development') {
-        // For development, return a mock response
-        console.warn('OpenAI API not available in development. Returning mock caller response.');
-        return {
-          choices: [{
-            message: {
-              content: "This is a mock caller response for development. Deploy to get AI responses."
-            }
-          }]
-        };
-      }
-      throw new Error(`OpenAI API error: ${response.statusText}`);
-    }
-    return response.json();
   }
-
-  audio = {
-    speech: {
-      create: async (params: any) => {
-        const response = await fetch('/api/openai', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            endpoint: 'audio.speech',
-            ...params
-          })
-        });
-        if (!response.ok) {
-          if (response.status === 404 && process.env.NODE_ENV === 'development') {
-            // For development, return a mock audio buffer (silence)
-            console.warn('OpenAI TTS not available in development. Using silence.');
-            const silenceBuffer = new ArrayBuffer(1024);
-            return {
-              arrayBuffer: () => Promise.resolve(silenceBuffer)
-            };
+  
+  // Fallback to API endpoints (production or local dev server)
+  const apiBaseUrl = process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : '';
+  
+  return {
+    chat: {
+      completions: {
+        create: async (params: any) => {
+          const response = await fetch(`${apiBaseUrl}/api/openai`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(params)
+          });
+          if (!response.ok) {
+            throw new Error(`OpenAI API error: ${response.statusText}`);
           }
-          throw new Error(`OpenAI API error: ${response.statusText}`);
+          return response.json();
         }
-        return {
-          arrayBuffer: () => response.arrayBuffer()
-        };
       }
     },
-    transcriptions: {
-      create: async (params: any) => {
-        // For file uploads, we'll need to handle this differently
-        // For now, keeping the structure
-        const formData = new FormData();
-        formData.append('file', params.file);
-        formData.append('model', params.model);
-        
-        const response = await fetch('/api/openai-transcribe', {
-          method: 'POST',
-          body: formData
-        });
-        if (!response.ok) {
-          throw new Error(`OpenAI API error: ${response.statusText}`);
+    audio: {
+      speech: {
+        create: async (params: any) => {
+          const response = await fetch(`${apiBaseUrl}/api/openai`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              endpoint: 'audio.speech',
+              ...params
+            })
+          });
+          if (!response.ok) {
+            throw new Error(`OpenAI API error: ${response.statusText}`);
+          }
+          return {
+            arrayBuffer: () => response.arrayBuffer()
+          };
         }
-        return response.json();
+      },
+      transcriptions: {
+        create: async (params: any) => {
+          const formData = new FormData();
+          formData.append('file', params.file);
+          formData.append('model', params.model);
+          
+          const response = await fetch(`${apiBaseUrl}/api/openai-transcribe`, {
+            method: 'POST',
+            body: formData
+          });
+          if (!response.ok) {
+            throw new Error(`OpenAI API error: ${response.statusText}`);
+          }
+          return response.json();
+        }
       }
     }
   };
+};
 
-  chat = {
-    completions: {
-      create: async (params: any) => {
-        return this.createChatCompletion(params);
-      }
-    }
-  };
-}
-
-const openai = new OpenAIClient();
+const openai = getOpenAIClient();
 
 export class VoiceService {
   private mediaRecorder: MediaRecorder | null = null;

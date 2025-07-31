@@ -50,9 +50,21 @@ export class LiveKitService {
   private async generateAccessToken(roomName: string, participantName: string): Promise<string> {
     console.log('🔑 Generating access token...');
     
-    // Fetch LiveKit configuration from backend
+    // Check for local environment variables first (for development)
+    const localWsUrl = process.env.REACT_APP_LIVEKIT_WS_URL;
+    const localApiKey = process.env.REACT_APP_LIVEKIT_API_KEY;
+    const localApiSecret = process.env.REACT_APP_LIVEKIT_API_SECRET;
+    const localPreGeneratedToken = process.env.REACT_APP_LIVEKIT_TOKEN;
+    
+    if (localPreGeneratedToken) {
+      console.log('🔑 Using local LiveKit token for development');
+      return localPreGeneratedToken;
+    }
+    
+    // Fallback to API endpoint for production or local dev server
     try {
-      const response = await fetch('/api/livekit', {
+      const apiBaseUrl = process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : '';
+      const response = await fetch(`${apiBaseUrl}/api/livekit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'getConfig' })
@@ -94,22 +106,31 @@ export class LiveKitService {
       throw new Error('Room not initialized');
     }
 
-    // Fetch WS URL from backend config
-    const configResponse = await fetch('/api/livekit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'getConfig' })
-    });
+    // Check for local environment variables first (for development)
+    const localWsUrl = process.env.REACT_APP_LIVEKIT_WS_URL;
+    let wsUrl = localWsUrl;
     
-    if (!configResponse.ok) {
-      if (configResponse.status === 404 && process.env.NODE_ENV === 'development') {
-        throw new Error('LiveKit API not available in development mode. Audio features may be limited.');
+    if (!wsUrl) {
+      // Fallback to API endpoint for production or local dev server
+      const apiBaseUrl = process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : '';
+      const configResponse = await fetch(`${apiBaseUrl}/api/livekit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'getConfig' })
+      });
+      
+      if (!configResponse.ok) {
+        if (configResponse.status === 404 && process.env.NODE_ENV === 'development') {
+          throw new Error('LiveKit API not available in development mode. Audio features may be limited.');
+        }
+        throw new Error('Failed to fetch LiveKit configuration');
       }
-      throw new Error('Failed to fetch LiveKit configuration');
+      
+      const config = await configResponse.json();
+      wsUrl = config.wsUrl;
+    } else {
+      console.log('🔑 Using local LiveKit WS URL for development');
     }
-    
-    const config = await configResponse.json();
-    const wsUrl = config.wsUrl;
     if (!wsUrl) {
       throw new Error('LiveKit WebSocket URL must be provided in environment variables');
     }

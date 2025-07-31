@@ -88,18 +88,38 @@ You'll need API keys from:
    npm install
    ```
 
-2. **Development Mode**:
+2. **Environment Setup**:
    ```bash
-   npm start
+   cp .env.example .env
+   # Edit .env with your actual API keys
    ```
 
-3. **Limitations in Development**:
-   - ⚠️ **AI Caller**: Not available (requires deployed API endpoints)
-   - ⚠️ **Deepgram**: Not available (falls back to browser speech recognition)
-   - ⚠️ **LiveKit**: Not available (basic web audio only)
-   - ✅ **Basic Features**: Transcription, CAD interface, settings work
+3. **Development Options**:
 
-4. **For Full Features**: Deploy to Vercel with environment variables set
+   **Option A: Direct Browser API (Simple)**
+   ```bash
+   npm start
+   # Uses REACT_APP_* environment variables directly in browser
+   ```
+
+   **Option B: Development Server (Secure)**
+   ```bash
+   npm run dev
+   # Runs both client (localhost:3000) and API server (localhost:3001)
+   # Uses server-side environment variables (more secure)
+   ```
+
+   **Option C: Just the API Server**
+   ```bash
+   npm run server
+   # Only runs the API server on localhost:3001
+   ```
+
+4. **Full Features Available Locally**:
+   - ✅ **AI Caller**: Works with both options
+   - ✅ **Deepgram**: Works with both options  
+   - ✅ **LiveKit**: Works with both options
+   - ✅ **All Features**: Complete functionality in development!
 
 ## 📖 Usage
 

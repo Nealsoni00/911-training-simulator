@@ -11,7 +11,12 @@ export class DeepgramService {
   private apiKey: string | null = null;
 
   constructor() {
-    // We'll fetch the API key from the backend when needed
+    // Check for API key in environment first (for local development)
+    const localApiKey = process.env.REACT_APP_DEEPGRAM_API_KEY;
+    if (localApiKey) {
+      console.log('🔑 Using local Deepgram API key for development');
+      this.apiKey = localApiKey;
+    }
   }
 
   // Set up callbacks
@@ -28,7 +33,8 @@ export class DeepgramService {
     // Fetch API key from backend if not already fetched
     if (!this.apiKey) {
       try {
-        const response = await fetch('/api/deepgram', {
+        const apiBaseUrl = process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : '';
+        const response = await fetch(`${apiBaseUrl}/api/deepgram`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'getToken' })
