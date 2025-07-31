@@ -243,16 +243,13 @@ function App() {
           }]);
           
           // Convert to speech and play
-          const audioBuffer = await voiceServiceRef.current?.textToSpeech(
-            callerResponse, 
-            callerVoice as 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
-          );
+          const audioBuffer = await voiceServiceRef.current?.textToSpeech(callerResponse);
           
           if (audioBuffer) {
             setIsCallerSpeaking(true);
             await voiceServiceRef.current?.queueAudio(
               audioBuffer, 
-              config.callerVolume,
+              config.volumeLevel,
               () => setIsCallerSpeaking(true),
               () => {
                 setIsCallerSpeaking(false);
