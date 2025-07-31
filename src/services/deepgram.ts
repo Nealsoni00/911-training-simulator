@@ -4,18 +4,25 @@ export class DeepgramService {
   private onTranscriptCallback?: (transcript: string, isFinal: boolean) => void;
   private onErrorCallback?: (error: string) => void;
   private isConnected: boolean = false;
-  private reconnectAttempts: number = 0;
+  public reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 3;
   private reconnectDelay: number = 1000;
+  public hasCallbacks: boolean = false;
+  private startTime: number = 0;
 
   private apiKey: string | null = null;
 
   constructor() {
     // Check for API key in environment first (for local development)
     const localApiKey = process.env.REACT_APP_DEEPGRAM_API_KEY;
+    console.log('🔍 Checking for REACT_APP_DEEPGRAM_API_KEY:', localApiKey ? 'Found' : 'Not found');
+    console.log('🔍 Environment variables available:', Object.keys(process.env).filter(key => key.startsWith('REACT_APP_')));
+    
     if (localApiKey) {
       console.log('🔑 Using local Deepgram API key for development');
       this.apiKey = localApiKey;
+    } else {
+      console.warn('⚠️ No REACT_APP_DEEPGRAM_API_KEY found in environment');
     }
   }
 
@@ -68,38 +75,40 @@ export class DeepgramService {
     }
     
     const apiKey = this.apiKey;
+    console.log('🔑 API Key status:', apiKey ? 'Available' : 'Missing');
+    
     if (!apiKey) {
+      console.error('❌ No Deepgram API key available. Check environment variable REACT_APP_DEEPGRAM_API_KEY');
       throw new Error('Deepgram API key is required.');
     }
+    
+    // Validate API key format (Deepgram keys are usually 32+ characters)
+    if (apiKey.length < 32) {
+      console.warn('⚠️ API key seems too short:', apiKey.length, 'characters');
+    }
+    
+    // Check if it looks like a Deepgram key (they can be hex or contain other characters)
+    console.log('🔍 API key length:', apiKey.length);
+    console.log('🔍 API key format check - first char:', apiKey.charAt(0));
 
-    // Deepgram WebSocket URL with parameters optimized for 911 dispatch accuracy
+    // Try the correct Deepgram authentication method
+    console.log('🧪 Testing Deepgram WebSocket with proper authentication...');
     const wsUrl = new URL('wss://api.deepgram.com/v1/listen');
+    
+    // Add essential parameters
     wsUrl.searchParams.set('encoding', 'linear16');
     wsUrl.searchParams.set('sample_rate', '16000');
     wsUrl.searchParams.set('channels', '1');
-    wsUrl.searchParams.set('model', 'nova-2'); // Latest model for best accuracy
-    wsUrl.searchParams.set('version', 'latest'); // Use latest version
     wsUrl.searchParams.set('language', 'en-US');
-    wsUrl.searchParams.set('tier', 'enhanced'); // Enhanced accuracy tier
-    wsUrl.searchParams.set('interim_results', 'true'); // Enable partial results
-    wsUrl.searchParams.set('smart_format', 'true'); // Auto-formatting with numbers, dates
-    wsUrl.searchParams.set('punctuate', 'true');
-    wsUrl.searchParams.set('paragraphs', 'true'); // Better sentence structure
-    wsUrl.searchParams.set('utterances', 'true'); // Better utterance detection
-    wsUrl.searchParams.set('diarize', 'false'); // Single speaker for dispatcher
-    wsUrl.searchParams.set('filler_words', 'true'); // Keep ums, ahs for realism
-    wsUrl.searchParams.set('profanity_filter', 'false'); // Keep original for 911 context
-    wsUrl.searchParams.set('redact', 'false'); // Don't redact sensitive info
-    wsUrl.searchParams.set('numerals', 'true'); // Convert numbers to digits
-    wsUrl.searchParams.set('search', '911,emergency,address,street,avenue,boulevard,police,fire,ambulance,what is the address,whats the address'); // Keywords for better accuracy
-    wsUrl.searchParams.set('replace', 'em:them,gonna:going to,wanna:want to,nine one one:911,nine eleven:911'); // Common speech corrections
-    wsUrl.searchParams.set('keywords', '911:10,emergency:8,address:8,what is the address:15,whats the address:15,police:5,fire:5,ambulance:5'); // Keyword boosting
-    wsUrl.searchParams.set('endpointing', '500'); // 500ms for more natural pauses
-    wsUrl.searchParams.set('vad_events', 'true'); // Voice activity detection
-    wsUrl.searchParams.set('multichannel', 'false'); // Single channel processing
+    
+    console.log('🔗 Building WebSocket URL without token (will use subprotocol auth)...');
 
     console.log('🔗 Connecting to Deepgram WebSocket...');
+    console.log('🌐 WebSocket URL:', wsUrl.toString());
+    console.log('🔐 Using API key (first 10 chars):', apiKey.substring(0, 10) + '...');
     
+    // Use the correct Deepgram authentication method with subprotocols
+    console.log('🚀 Attempting WebSocket connection with token subprotocol...');
     this.websocket = new WebSocket(wsUrl.toString(), ['token', apiKey]);
 
     return new Promise((resolve, reject) => {
@@ -112,7 +121,12 @@ export class DeepgramService {
         console.log('✅ Connected to Deepgram WebSocket');
         this.isConnected = true;
         this.reconnectAttempts = 0;
-        resolve();
+        
+        // Add a small delay after connection to let Deepgram fully initialize
+        setTimeout(() => {
+          console.log('🎯 Deepgram connection stabilized, ready for transcription');
+          resolve();
+        }, 500);
       };
 
       this.websocket.onmessage = (event) => {
@@ -123,6 +137,13 @@ export class DeepgramService {
           if (data.type === 'Results') {
             const transcript = data.channel?.alternatives?.[0]?.transcript;
             const isFinal = data.is_final;
+            
+            // Skip transcripts during initial warmup period to avoid inaccurate results
+            const timeSinceStart = Date.now() - this.startTime;
+            if (timeSinceStart < 2000) {
+              console.log('🔥 Skipping transcript during warmup period:', transcript);
+              return;
+            }
             
             console.log('📝 Transcript received:', transcript, 'isFinal:', isFinal);
             
@@ -145,16 +166,55 @@ export class DeepgramService {
 
       this.websocket.onerror = (error) => {
         console.error('❌ Deepgram WebSocket error:', error);
+        console.error('❌ WebSocket readyState:', this.websocket?.readyState);
+        console.error('❌ Error details:', {
+          type: error.type,
+          target: error.target,
+          currentTarget: error.currentTarget
+        });
         this.isConnected = false;
         if (this.onErrorCallback) {
-          this.onErrorCallback('WebSocket connection error');
+          this.onErrorCallback('WebSocket connection error: ' + error.type);
         }
         reject(error);
       };
 
       this.websocket.onclose = (event) => {
         console.log('🔌 Deepgram WebSocket closed:', event.code, event.reason);
+        console.log('🔌 Close details:', {
+          code: event.code,
+          reason: event.reason,
+          wasClean: event.wasClean
+        });
         this.isConnected = false;
+        
+        // Log common WebSocket close codes
+        const closeReasons: { [key: number]: string } = {
+          1000: 'Normal closure',
+          1001: 'Going away',
+          1002: 'Protocol error',
+          1003: 'Unsupported data',
+          1006: 'Abnormal closure',
+          1011: 'Server error',
+          1012: 'Service restart',
+          1013: 'Try again later',
+          1014: 'Bad gateway',
+          1015: 'TLS handshake'
+        };
+        console.log('🔌 Close reason:', closeReasons[event.code] || 'Unknown');
+        
+        // Specific diagnostic for 1006 error
+        if (event.code === 1006) {
+          console.error('💡 Code 1006 usually indicates:');
+          console.error('   • Invalid API key or authentication failure');
+          console.error('   • Network connectivity issues');
+          console.error('   • Deepgram service temporarily unavailable');
+          console.error('   • Incorrect WebSocket URL or parameters');
+          console.error('🔍 Suggestions:');
+          console.error('   1. Verify your Deepgram API key is valid and active');
+          console.error('   2. Check if your Deepgram account has credits');
+          console.error('   3. Try a different authentication method');
+        }
         
         // Attempt to reconnect if not a clean close
         if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
@@ -190,6 +250,9 @@ export class DeepgramService {
   // Start real-time transcription
   async startTranscription(): Promise<void> {
     try {
+      // Record start time for warmup period
+      this.startTime = Date.now();
+      
       // Connect to Deepgram WebSocket
       await this.connectWebSocket();
 

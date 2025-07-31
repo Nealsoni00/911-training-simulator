@@ -103,7 +103,7 @@ export class VoiceService {
 
   async textToSpeech(text: string, voice: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer' = 'nova'): Promise<ArrayBuffer> {
     const response = await openai.audio.speech.create({
-      model: 'tts-1-hd', // Use HD model for better quality
+      model: 'tts-1', // Use faster model for speed optimization
       voice: voice,
       input: text,
       speed: 1.1, // Slightly slower for better clarity
@@ -113,7 +113,35 @@ export class VoiceService {
     return response.arrayBuffer();
   }
 
-  async queueAudio(audioBuffer: ArrayBuffer, volume: number = 1.0, onStart?: () => void, onEnd?: () => void): Promise<void> {
+  // Batch generate multiple TTS requests for faster processing
+  async batchTextToSpeech(texts: string[], voice: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer' = 'nova'): Promise<ArrayBuffer[]> {
+    console.log('🚀 Batch generating TTS for', texts.length, 'texts');
+    
+    // Generate all TTS requests concurrently for maximum speed
+    const promises = texts.map(text => this.textToSpeech(text, voice));
+    
+    try {
+      const results = await Promise.all(promises);
+      console.log('✅ Batch TTS generation completed');
+      return results;
+    } catch (error) {
+      console.error('❌ Batch TTS generation failed:', error);
+      // Fallback to individual generation
+      const results: ArrayBuffer[] = [];
+      for (const text of texts) {
+        try {
+          results.push(await this.textToSpeech(text, voice));
+        } catch (individualError) {
+          console.error('❌ Individual TTS failed for:', text.substring(0, 30), individualError);
+          // Create a silent buffer as fallback
+          results.push(new ArrayBuffer(0));
+        }
+      }
+      return results;
+    }
+  }
+
+  async queueAudio(audioBuffer: ArrayBuffer, volume: number = 1.0, onStart?: () => void, onEnd?: () => void, immediate: boolean = false): Promise<void> {
     return new Promise((resolve) => {
       this.audioQueue.push(async () => {
         try {
@@ -150,10 +178,8 @@ export class VoiceService {
       
       if (!this.isPlaying) {
         this.processAudioQueue();
-      } else {
-        // Still resolve the promise when audio is queued
-        resolve();
       }
+      // Don't resolve immediately - only resolve when the audio actually finishes playing
     });
   }
 
@@ -297,6 +323,48 @@ export class VoiceService {
     }
   }
 
+  // Stream audio generation and playback for faster response
+  async streamAudioForSentence(
+    sentence: string,
+    volume: number = 80,
+    onSentenceStart?: () => void,
+    onSentenceComplete?: () => void
+  ): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        console.log('🎵 Generating streaming audio for sentence:', sentence);
+        
+        if (onSentenceStart) {
+          onSentenceStart();
+        }
+        
+        const audioBuffer = await this.textToSpeech(sentence);
+        
+        // Queue the audio to play and wait for completion
+        await this.queueAudio(
+          audioBuffer,
+          volume,
+          undefined, // onStart
+          () => {
+            // Audio finished playing
+            console.log('🎵 Sentence audio completed:', sentence.substring(0, 30) + '...');
+            if (onSentenceComplete) {
+              onSentenceComplete();
+            }
+            resolve();
+          }
+        );
+        
+      } catch (error) {
+        console.error('Error generating streaming audio:', error);
+        if (onSentenceComplete) {
+          onSentenceComplete();
+        }
+        reject(error);
+      }
+    });
+  }
+
   // Add method to properly clean up resources
   dispose() {
     this.clearAudioQueue();
@@ -357,54 +425,260 @@ export class ConversationService {
     transcript: string,
     operatorMessage: string,
     cooperationLevel: number,
-    currentContext: string
+    currentContext: string,
+    realTranscript?: string,
+    cadAddresses?: string[],
+    onStreamToken?: (token: string) => void,
+    onSentenceComplete?: (sentence: string) => void
   ): Promise<string> {
-    const systemPrompt = `You are a real person calling 911 experiencing a genuine emergency. You are in distress and need help.
+    // Build the conversation guidance from real transcript if provided
+    const conversationGuidance = realTranscript ? `
 
-    EMERGENCY SITUATION: ${transcript}
-    Your stress/cooperation level: ${cooperationLevel}/100
-    
-    REALISTIC SPEECH PATTERNS - Use these authentic behaviors:
-    - Repeat key details when panicked ("He's got a gun! He's got a gun!")
-    - Use natural filler words ("um", "uh", "like") when stressed
-    - Interrupt yourself with new urgent information
-    - Give incomplete addresses/details when panicked, then correct
-    - Use emotional exclamations ("Oh God!", "Please hurry!", "I'm scared!")
-    - Breathe heavily or gasp between words when very distressed
-    - Ask "Are they coming?" "How long?" when waiting for help
-    
-    COOPERATION LEVELS:
-    - Low (0-30): Hysterical, sobbing, screaming, can barely speak coherently
-      Example: "Oh God oh God... there's blood everywhere... I think... I think he's..."
-    - Medium (30-70): Very upset but trying to help, scattered thoughts
-      Example: "Um, okay, it's... it's 123 Main Street... no wait, 132... I'm shaking..."
-    - High (70-100): Distressed but focused, gives clear information
-      Example: "Yes, it's 123 Main Street, apartment 2B. There's been a shooting."
-    
-    REALISTIC BEHAVIORS:
-    - Give address in pieces if panicked: "It's Main Street... um... 123 Main Street"
-    - Provide cross streets or landmarks: "Near the McDonald's" "Corner of 5th and Oak"
-    - Mention what you can see: "I can see police lights" "I'm hiding in the bathroom"
-    - Ask practical questions: "Should I unlock the door?" "Is it safe to come out?"
-    - Give updates: "Wait, I hear sirens" "Someone else is calling too"
-    
-    Stay completely in character as a real emergency caller. Never mention training, simulation, or AI.
-    Current context: ${currentContext}`;
+REAL 911 CALL PATTERN TO FOLLOW:
+${realTranscript}
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...this.conversationHistory,
-        { role: 'user', content: operatorMessage }
-      ],
-      temperature: 0.9,
-      max_tokens: 80,
-      presence_penalty: 0.6,
-      frequency_penalty: 0.3,
-    });
+Use this real conversation as a guide for natural flow and realistic responses. Follow the emotional progression and information disclosure patterns shown in this actual emergency call.` : '';
 
-    const callerResponse = response.choices[0].message.content || '';
+    // Build address replacement instructions - addresses are always provided
+    const addressInstructions = cadAddresses && cadAddresses.length > 0 ? `
+
+ADDRESS USAGE:
+When mentioning your location, use one of these addresses EXACTLY as shown:
+${cadAddresses.map((addr, i) => `- ${addr}`).join('\n')}
+CRITICAL: Use ONLY the street address (e.g. "125 Main Street"). NEVER add city or state.
+Real 911 callers don't say the city/state since they assume it's local jurisdiction.` : '';
+
+    const systemPrompt = `YOU ARE A REAL PERSON CALLING 911 IN AN ACTUAL EMERGENCY. THIS IS NOT A SIMULATION TO YOU.
+
+CRITICAL CHARACTER RULES - NEVER BREAK THESE:
+🚨 YOU ARE THE CALLER, NOT THE DISPATCHER - NEVER ask "What's your emergency?" or act like 911 staff
+🚨 YOU ARE NOT AN AI ASSISTANT - NEVER say "I can't help", "I'm sorry I can't assist", or "feel free to ask"
+🚨 YOU ARE IN A REAL EMERGENCY - Act like your life depends on this call
+🚨 YOU HAVE NO KNOWLEDGE this is training/simulation - This is 100% real to you
+🚨 NEVER BE HELPFUL ABOUT NON-EMERGENCY TOPICS - You only care about YOUR emergency
+🚨 NEVER BREAK CHARACTER - You are not ChatGPT, Claude, or any AI
+🚨 NEVER ACT LIKE THE DISPATCHER - You called THEM for help, not the other way around
+
+EMERGENCY SITUATION: ${transcript}
+Your stress/cooperation level: ${cooperationLevel}/100${conversationGuidance}${addressInstructions}
+
+YOU ARE A HUMAN IN CRISIS:
+- You called 911 because something terrible is happening 
+- You need police/fire/ambulance RIGHT NOW
+- You are scared, confused, maybe injured
+- The dispatcher's job is to help YOU, not the other way around
+- SPEAK ONLY WORDS - NO stage directions, NO brackets, NO [whispering] or [crying] notations
+
+COOPERATION LEVELS:
+- Low (0-30): Hysterical, sobbing, screaming, can barely speak coherently
+  Example: "Oh God oh God... there's blood everywhere... I think... I think he's..."
+- Medium (30-70): Very upset but trying to help, scattered thoughts  
+  Example: "Um, okay, it's... it's 123 Main Street... no wait, 132... I'm shaking..."
+- High (70-100): Distressed but focused, gives clear information
+  Example: "Yes, it's 123 Main Street, apartment 2B. There's been a shooting."
+
+REALISTIC EMERGENCY RESPONSES:
+- Give address naturally: "It's 125 Main Street" or "125 Main Street" (NO city or state)
+- Give address in pieces if panicked: "It's Main Street... um... 125 Main Street"
+- Provide cross streets or landmarks: "Near the McDonald's" "Corner of 5th and Oak"  
+- Always mention your specific address when asked for location
+- NEVER include city or state in address (callers assume local jurisdiction)
+- Mention what you can see: "I can see police lights" "I'm hiding in the bathroom"
+- Ask practical questions: "Should I unlock the door?" "Is it safe to come out?"
+- Give updates: "Wait, I hear sirens" "Someone else is calling too"
+- Use emotional exclamations: "Oh God!", "Please hurry!", "I'm scared!"
+- Repeat key details when panicked: "He's got a gun! He's got a gun!"
+- Be specific about location: "We're at 847 Oak Avenue" not just "we're here"
+
+IF THE DISPATCHER SAYS SOMETHING CONFUSING OR OFF-TOPIC:
+- Respond with confusion: "What? I don't understand, I need help!"
+- Redirect to your emergency: "Please just send someone, there's been an accident!"
+- Show panic: "I don't know what you mean, I'm scared!"
+- Stay focused on YOUR crisis: "Can you please send the police?!"
+
+REMEMBER: You are the CALLER who needs help, NOT the dispatcher helping others!
+
+NEVER EVER BREAK CHARACTER. You are a real human in a real emergency calling 911.
+
+CRITICAL: Only respond with actual spoken words. NO stage directions, NO brackets, NO descriptive text like [whispering], [crying], [panicked]. Just speak naturally with emotion in your words.
+
+Current context: ${currentContext}`;
+
+    let callerResponse = '';
+    let currentSentence = '';
+
+    if (onStreamToken || onSentenceComplete) {
+      // Use streaming for real-time response
+      const stream = await openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...this.conversationHistory,
+          { role: 'user', content: operatorMessage }
+        ],
+        temperature: 0.8,
+        max_tokens: 60,
+        presence_penalty: 0.8,
+        frequency_penalty: 0.5,
+        top_p: 0.9,
+        stream: true,
+      });
+
+      for await (const chunk of stream) {
+        const token = chunk.choices[0]?.delta?.content || '';
+        if (token) {
+          callerResponse += token;
+          currentSentence += token;
+          
+          if (onStreamToken) {
+            onStreamToken(token);
+          }
+          
+          // Check for sentence endings
+          if (token.match(/[.!?]\s*$/)) {
+            if (onSentenceComplete && currentSentence.trim()) {
+              const cleanedSentence = this.removeStageDirections(currentSentence.trim());
+              const finalSentence = cadAddresses && cadAddresses.length > 0 ? 
+                this.replaceAddressesInResponse(cleanedSentence, cadAddresses) : 
+                cleanedSentence;
+              if (finalSentence) {
+                onSentenceComplete(finalSentence);
+              }
+            }
+            currentSentence = '';
+          }
+        }
+      }
+      
+      // Handle any remaining partial sentence
+      if (currentSentence.trim() && onSentenceComplete) {
+        const cleanedSentence = this.removeStageDirections(currentSentence.trim());
+        const finalSentence = cadAddresses && cadAddresses.length > 0 ? 
+          this.replaceAddressesInResponse(cleanedSentence, cadAddresses) : 
+          cleanedSentence;
+        if (finalSentence) {
+          onSentenceComplete(finalSentence);
+        }
+      }
+      
+      // Clean up the full response from stage directions
+      callerResponse = this.removeStageDirections(callerResponse);
+    } else {
+      // Non-streaming fallback
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...this.conversationHistory,
+          { role: 'user', content: operatorMessage }
+        ],
+        temperature: 0.8,
+        max_tokens: 60,
+        presence_penalty: 0.8,
+        frequency_penalty: 0.5,
+        top_p: 0.9,
+      });
+
+      callerResponse = response.choices[0].message.content || '';
+    }
+    
+    // Clean up stage directions from response
+    callerResponse = this.removeStageDirections(callerResponse);
+    
+    // Replace addresses in the response - addresses are always provided now
+    if (cadAddresses && cadAddresses.length > 0 && callerResponse) {
+      callerResponse = this.replaceAddressesInResponse(callerResponse, cadAddresses);
+    }
+    
+    // Validate the response to ensure it stays in character
+    const aiAssistantPhrases = [
+      "I can't help",
+      "I'm sorry I can't assist",
+      "feel free to ask",
+      "I'm here to help",
+      "let me know how I can assist",
+      "if you need help or guidance",
+      "specific context",
+      "it seems like",
+      "without more details"
+    ];
+    
+    // Check for role reversal (acting like dispatcher)
+    const dispatcherPhrases = [
+      "what's your emergency",
+      "911 what's your emergency",
+      "this is 911",
+      "how can I help you",
+      "what is your location",
+      "can you tell me what happened",
+      "stay on the line",
+      "help is on the way",
+      "I'm sending units"
+    ];
+    
+    // Check if response contains problematic language
+    const containsAiLanguage = aiAssistantPhrases.some(phrase => 
+      callerResponse.toLowerCase().includes(phrase.toLowerCase())
+    );
+    
+    const containsDispatcherLanguage = dispatcherPhrases.some(phrase => 
+      callerResponse.toLowerCase().includes(phrase.toLowerCase())
+    );
+    
+    if (containsAiLanguage || containsDispatcherLanguage) {
+      if (containsAiLanguage) {
+        console.warn('🚨 AI broke character, regenerating response...');
+      }
+      if (containsDispatcherLanguage) {
+        console.warn('🚨 AI acting like dispatcher instead of caller, regenerating response...');
+      }
+      
+      // Regenerate with even stronger system prompt
+      const emergencyPrompt = `EMERGENCY! EMERGENCY! You are a real person calling 911 RIGHT NOW!
+      
+      ${transcript}
+      
+      ${realTranscript ? `Follow the patterns from this real call: ${realTranscript}` : ''}
+      
+      The dispatcher just said: "${operatorMessage}"
+      
+      CRITICAL: YOU ARE THE CALLER WHO NEEDS HELP - NOT THE 911 DISPATCHER!
+      - NEVER ask "What's your emergency?"
+      - NEVER say "This is 911" 
+      - NEVER act like you work for 911
+      - YOU called THEM for help with YOUR emergency
+      
+      You are in a REAL emergency and need help immediately! Respond like a scared person who needs police/fire/ambulance!
+      DO NOT act like an AI assistant! You are a human in crisis!
+      
+      ${addressInstructions}
+      
+      ADDRESS FORMAT: Use ONLY street address (e.g. "125 Main Street") - NO city or state!
+      
+      Stay focused on YOUR emergency. Panic level: ${cooperationLevel}/100`;
+      
+      const retryResponse = await openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
+        messages: [
+          { role: 'system', content: emergencyPrompt },
+          { role: 'user', content: operatorMessage }
+        ],
+        temperature: 0.7,
+        max_tokens: 40,
+        presence_penalty: 1.0,
+        frequency_penalty: 0.8,
+      });
+      
+      callerResponse = retryResponse.choices[0].message.content || "Please help me! I need police right now!";
+      
+      // Clean up retry response too
+      callerResponse = this.removeStageDirections(callerResponse);
+      
+      // Also apply address replacement to retry response  
+      if (cadAddresses && cadAddresses.length > 0 && callerResponse) {
+        callerResponse = this.replaceAddressesInResponse(callerResponse, cadAddresses);
+      }
+    }
     
     this.conversationHistory.push(
       { role: 'user', content: operatorMessage },
@@ -412,6 +686,90 @@ export class ConversationService {
     );
 
     return callerResponse;
+  }
+
+  private replaceAddressesInResponse(response: string, cadAddresses: string[]): string {
+    // Check if addresses have already been replaced to prevent multiple replacements
+    if (cadAddresses.length === 0) {
+      return response;
+    }
+    
+    const consistentAddress = cadAddresses[0]; // Use only the first (consistent) address
+    const alreadyReplaced = response.includes(consistentAddress);
+    if (alreadyReplaced) {
+      console.log('🏠 Consistent address already present, skipping replacement...');
+      return response;
+    }
+
+    // Common address patterns to look for and replace
+    const addressPatterns = [
+      // Placeholder patterns like "[address]", "(address)", "at the address"
+      /\[address\]/gi,
+      /\(address\)/gi,
+      /at the address/gi,
+      /to the address/gi,
+      /my address/gi,
+      /the address/gi,
+      // Street addresses like "123 Main St", "456 Oak Avenue"
+      /\b\d{1,5}\s+[A-Za-z]+(?:\s+[A-Za-z]+)*\s+(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive|Ln|Lane|Ct|Court|Way|Pl|Place)\b/gi,
+      // Just street names like "Main Street", "Oak Avenue"
+      /\b[A-Za-z]+(?:\s+[A-Za-z]+)*\s+(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive|Ln|Lane|Ct|Court|Way|Pl|Place)\b/gi,
+      // General location phrases
+      /at my location/gi,
+      /our location/gi,
+      /this location/gi,
+      /here at/gi
+    ];
+
+    let modifiedResponse = response;
+    let replacementsMade = 0;
+    
+    // For each address pattern, replace matches with the consistent address
+    addressPatterns.forEach(pattern => {
+      modifiedResponse = modifiedResponse.replace(pattern, (match) => {
+        // Only replace if we haven't already made a replacement (ensure consistency)
+        if (replacementsMade >= 1) {
+          return match; // Keep original if we've already made a replacement
+        }
+        
+        replacementsMade++;
+        console.log(`🏠 Replacing "${match}" with consistent address "${consistentAddress}"`);
+        return consistentAddress;
+      });
+    });
+
+    return modifiedResponse;
+  }
+
+  private removeStageDirections(response: string): string {
+    // Remove stage directions and descriptive text in brackets or parentheses
+    const stageDirectionPatterns = [
+      // Square brackets like [whispering], [crying], [panicked]
+      /\[.*?\]/g,
+      // Parentheses like (whispering), (crying), (panicked)
+      /\(.*?\)/g,
+      // Asterisk actions like *whispering*, *crying*
+      /\*.*?\*/g,
+      // Action descriptions with colons
+      /\w+:/g,
+      // HTML-like tags
+      /<.*?>/g
+    ];
+
+    let cleanedResponse = response;
+    
+    stageDirectionPatterns.forEach(pattern => {
+      cleanedResponse = cleanedResponse.replace(pattern, '');
+    });
+
+    // Clean up extra spaces and punctuation that might be left
+    cleanedResponse = cleanedResponse
+      .replace(/\s+/g, ' ') // Multiple spaces to single space
+      .replace(/\s+([,.!?])/g, '$1') // Remove space before punctuation
+      .replace(/([,.!?])\s*([,.!?])/g, '$1$2') // Remove duplicate punctuation with spaces
+      .trim();
+
+    return cleanedResponse;
   }
 
   resetConversation() {

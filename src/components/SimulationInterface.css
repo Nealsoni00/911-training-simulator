@@ -1,0 +1,377 @@
+.simulation-interface {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0d1117 0%, #1a1f2e 100%);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+.sim-header {
+  background: #1e242e;
+  border-bottom: 1px solid #2a3441;
+  padding: 15px 25px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.call-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.call-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6c757d;
+}
+
+.status-dot.active {
+  background: #28a745;
+  animation: statusPulse 2s infinite;
+}
+
+.status-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: #28a745;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.call-duration {
+  font-family: 'Courier New', monospace;
+  font-size: 18px;
+  font-weight: 600;
+  color: #4a9eff;
+  background: rgba(74, 158, 255, 0.1);
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(74, 158, 255, 0.2);
+}
+
+.scenario-title {
+  flex: 1;
+  text-align: center;
+}
+
+.scenario-title h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.config-toggle,
+.edit-preset-button,
+.restart-simulation-button {
+  padding: 8px;
+  background: #2a3441;
+  border: 1px solid #3a4553;
+  border-radius: 8px;
+  color: #cccccc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.config-toggle:hover {
+  background: #3a4553;
+  border-color: #4a9eff;
+  color: #4a9eff;
+}
+
+.edit-preset-button:hover {
+  background: #3a4553;
+  border-color: #28a745;
+  color: #28a745;
+}
+
+.restart-simulation-button:hover {
+  background: #3a4553;
+  border-color: #ffc107;
+  color: #ffc107;
+}
+
+.config-toggle svg,
+.edit-preset-button svg,
+.restart-simulation-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.config-panel {
+  background: #1a1f2e;
+  border-bottom: 1px solid #2a3441;
+  padding: 20px 25px;
+  animation: slideDown 0.3s ease-out;
+}
+
+.config-content {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 30px;
+  align-items: start;
+}
+
+.config-section h4 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4a9eff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.scenario-text {
+  margin: 0 0 20px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #cccccc;
+  background: #0f1419;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #2a3441;
+}
+
+.instructions-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #ffc107;
+  background: rgba(255, 193, 7, 0.1);
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 193, 7, 0.2);
+}
+
+.config-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  min-width: 280px;
+}
+
+.stat-item {
+  background: #0f1419;
+  border: 1px solid #2a3441;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.stat-label {
+  display: block;
+  font-size: 11px;
+  color: #888888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.sim-content {
+  flex: 1;
+  height: calc(100vh - 70px);
+}
+
+.left-panel {
+  padding: 25px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+}
+
+.status-message {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background: #1e242e;
+  border: 1px solid #2a3441;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.status-message.waiting {
+  border-color: #4a9eff;
+  background: rgba(74, 158, 255, 0.05);
+}
+
+.status-message.warming {
+  border-color: #ffc107;
+  background: rgba(255, 193, 7, 0.05);
+}
+
+.status-message.paused {
+  border-color: #ffc107;
+  background: rgba(255, 193, 7, 0.05);
+}
+
+.status-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(74, 158, 255, 0.1);
+  color: #4a9eff;
+  flex-shrink: 0;
+}
+
+.status-message.warming .status-icon {
+  background: rgba(255, 193, 7, 0.1);
+  color: #ffc107;
+}
+
+.status-message.warming .status-icon svg {
+  animation: spin 2s linear infinite;
+}
+
+.status-message.paused .status-icon {
+  background: rgba(255, 193, 7, 0.1);
+  color: #ffc107;
+}
+
+.status-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.status-text {
+  flex: 1;
+}
+
+.status-title {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.status-subtitle {
+  display: block;
+  font-size: 14px;
+  color: #888888;
+}
+
+/* Animations */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes statusPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.2);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .config-content {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .config-stats {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .sim-header {
+    padding: 12px 15px;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  
+  .call-info {
+    gap: 15px;
+  }
+  
+  .call-duration {
+    font-size: 16px;
+  }
+  
+  .scenario-title h2 {
+    font-size: 18px;
+  }
+  
+  .sim-content {
+    height: auto;
+  }
+  
+  .left-panel {
+    padding: 20px 15px;
+  }
+  
+  .config-panel {
+    padding: 15px;
+  }
+  
+  .config-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  
+  .status-message {
+    padding: 15px;
+    gap: 12px;
+  }
+  
+  .status-icon {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .status-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

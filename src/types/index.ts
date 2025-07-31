@@ -32,3 +32,14 @@ export interface ConversationMessage {
   content: string;
   timestamp: Date;
 }
+
+export interface SimulationPreset {
+  id: string;
+  name: string;
+  transcript: string;
+  realTranscript?: string; // Optional real 911 call transcript to guide conversation
+  callerInstructions: string;
+  config: SimulatorConfig;
+  createdAt: Date;
+  updatedAt: Date;
+}

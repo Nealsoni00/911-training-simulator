@@ -1,0 +1,166 @@
+.compact-audio-selector {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.audio-device-selector {
+  position: relative;
+}
+
+.device-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  background: #2a2a2a;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  font-weight: 500;
+  min-width: 80px;
+}
+
+.device-button:hover {
+  background: #353535;
+  border-color: #4a9eff;
+}
+
+.device-button:active {
+  transform: translateY(1px);
+}
+
+.device-icon {
+  width: 16px;
+  height: 16px;
+  color: #4a9eff;
+}
+
+.device-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #cccccc;
+}
+
+.dropdown-arrow {
+  width: 12px;
+  height: 12px;
+  color: #888888;
+  transition: transform 0.2s ease;
+}
+
+.device-button:hover .dropdown-arrow {
+  color: #4a9eff;
+}
+
+.device-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #1a1a1a;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  min-width: 200px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.dropdown-header {
+  padding: 8px 12px;
+  background: #2a2a2a;
+  border-bottom: 1px solid #404040;
+  font-size: 11px;
+  font-weight: 600;
+  color: #4a9eff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dropdown-item:hover {
+  background: #2a2a2a;
+}
+
+.dropdown-item.selected {
+  background: #4a9eff;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.dropdown-item.selected:hover {
+  background: #3d8ce6;
+}
+
+/* Microphone specific styling */
+.microphone-button {
+  border-color: #28a745;
+}
+
+.microphone-button:hover {
+  border-color: #34ce57;
+}
+
+.microphone-button .device-icon {
+  color: #28a745;
+}
+
+.microphone-button:hover .device-icon {
+  color: #34ce57;
+}
+
+/* Speaker specific styling */
+.speaker-button {
+  border-color: #dc3545;
+}
+
+.speaker-button:hover {
+  border-color: #e85d6d;
+}
+
+.speaker-button .device-icon {
+  color: #dc3545;
+}
+
+.speaker-button:hover .device-icon {
+  color: #e85d6d;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .compact-audio-selector {
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .device-button {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .device-dropdown {
+    min-width: 150px;
+  }
+}
