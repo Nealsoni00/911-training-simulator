@@ -118,15 +118,10 @@ export class DeepgramService {
       }
 
       this.websocket.onopen = () => {
-        console.log('✅ Connected to Deepgram WebSocket');
+        console.log('✅ Connected to Deepgram WebSocket - ready for immediate transcription');
         this.isConnected = true;
         this.reconnectAttempts = 0;
-        
-        // Add a small delay after connection to let Deepgram fully initialize
-        setTimeout(() => {
-          console.log('🎯 Deepgram connection stabilized, ready for transcription');
-          resolve();
-        }, 500);
+        resolve();
       };
 
       this.websocket.onmessage = (event) => {
@@ -137,13 +132,6 @@ export class DeepgramService {
           if (data.type === 'Results') {
             const transcript = data.channel?.alternatives?.[0]?.transcript;
             const isFinal = data.is_final;
-            
-            // Skip transcripts during initial warmup period to avoid inaccurate results
-            const timeSinceStart = Date.now() - this.startTime;
-            if (timeSinceStart < 2000) {
-              console.log('🔥 Skipping transcript during warmup period:', transcript);
-              return;
-            }
             
             console.log('📝 Transcript received:', transcript, 'isFinal:', isFinal);
             

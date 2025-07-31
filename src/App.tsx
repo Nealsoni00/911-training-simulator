@@ -245,22 +245,13 @@ function App() {
       );
     }
     
-    // Start listening for dispatcher to speak first
+    // Start listening for dispatcher to speak immediately
     setWaitingForDispatcher(true);
-    setIsSystemWarming(true);
+    setIsSystemWarming(false);
     
-    // Add a small delay to ensure all services are fully initialized
-    setTimeout(() => {
-      if (isRunningRef.current && !isPausedRef.current) {
-        console.log('🎯 Starting Deepgram transcription after initialization delay');
-        startDeepgramTranscription();
-        
-        // Clear warming status after Deepgram warmup period
-        setTimeout(() => {
-          setIsSystemWarming(false);
-        }, 3000); // Total 3 seconds warmup (1s + 2s from Deepgram)
-      }
-    }, 1000); // 1 second delay to ensure everything is ready
+    // Start transcription immediately - no delays
+    console.log('🎯 Starting Deepgram transcription immediately');
+    startDeepgramTranscription();
   };
 
   const handleEndSimulation = async () => {
@@ -367,106 +358,6 @@ function App() {
     voiceServiceRef.current?.setSpeakerDevice(deviceId);
   };
 
-  // Calculate intelligent buffer delay to wait for dispatcher to continue speaking
-  const calculateTranscriptBufferDelay = (operatorTranscript: string): number => {
-    const text = operatorTranscript.toLowerCase().trim();
-    
-    // Very short utterances (like "911") - long buffer to let them continue
-    if (text.length <= 10) {
-      return 3000; // 3 seconds
-    }
-    
-    // Common patterns that usually continue
-    const continuePatterns = [
-      '911',
-      '911 what',
-      '911 what is',
-      '911 what\'s',
-      'what is the',
-      'what\'s the',
-      'can you',
-      'i need',
-      'where are',
-      'what is your',
-      'tell me'
-    ];
-    
-    if (continuePatterns.some(pattern => text.includes(pattern) && text.length < 40)) {
-      return 2500; // 2.5 seconds for likely incomplete phrases
-    }
-    
-    // Incomplete sentences that might continue
-    if (!text.match(/[.!?]$/) && text.length < 50) {
-      return 2000; // 2 seconds for incomplete sentences
-    }
-    
-    // Complete questions - shorter buffer
-    const completePatterns = [
-      'what\'s your emergency',
-      'what is your emergency',
-      'what\'s the address',
-      'what is the address',
-      'where are you located',
-      'can you tell me what happened'
-    ];
-    
-    if (completePatterns.some(pattern => text.includes(pattern))) {
-      return 1000; // 1 second for complete questions
-    }
-    
-    // Normal length responses - short buffer
-    return 1500; // 1.5 seconds default
-  };
-
-  // Calculate intelligent response delay based on dispatcher message
-  const calculateResponseDelay = (operatorTranscript: string): number => {
-    const text = operatorTranscript.toLowerCase().trim();
-    
-    // Very short responses (like "911") - longer delay to let them continue
-    if (text.length <= 10) {
-      return 2000; // 2 seconds
-    }
-    
-    // Common incomplete dispatcher greetings - wait longer
-    const incompletePatterns = [
-      '911',
-      '911 what',
-      '911 what is',
-      '911 what\'s',
-      'what is the',
-      'what\'s the',
-      'can you tell me',
-      'i need you to',
-      'where are you',
-      'what is your'
-    ];
-    
-    if (incompletePatterns.some(pattern => text.includes(pattern) && text.length < 30)) {
-      return 1500; // 1.5 seconds for incomplete questions
-    }
-    
-    // Questions that seem complete but might continue
-    const questionPatterns = [
-      'what\'s your emergency',
-      'what is your emergency', 
-      'what\'s the address',
-      'what is the address',
-      'where are you located',
-      'can you tell me what happened'
-    ];
-    
-    if (questionPatterns.some(pattern => text.includes(pattern))) {
-      return 800; // 0.8 seconds for complete questions
-    }
-    
-    // Short dispatcher responses - medium delay
-    if (text.length < 25) {
-      return 1200; // 1.2 seconds
-    }
-    
-    // Normal responses - short delay to sound natural
-    return 600; // 0.6 seconds
-  };
 
   // Enhanced caller response system using preset instructions with streaming
   const generateEnhancedCallerResponse = async (
@@ -833,22 +724,9 @@ function App() {
             console.log('✅ Final Deepgram transcript:', operatorTranscript);
             
             if (!isPausedRef.current && !isProcessingRef.current && operatorTranscript.trim()) {
-              // Clear any existing buffer timeout
-              if (transcriptBufferRef.current) {
-                clearTimeout(transcriptBufferRef.current);
-              }
-              
-              // Add smart buffering to wait for dispatcher to potentially continue
-              const bufferDelay = calculateTranscriptBufferDelay(operatorTranscript);
-              console.log(`⏳ Buffering transcript for ${bufferDelay}ms to allow dispatcher to continue:`, operatorTranscript);
-              
-              transcriptBufferRef.current = setTimeout(async () => {
-                if (!isPausedRef.current && !isProcessingRef.current) {
-                  console.log('🔄 Processing buffered transcript after delay...');
-                  await handleFinalTranscript(operatorTranscript);
-                }
-                transcriptBufferRef.current = null;
-              }, bufferDelay);
+              // Process transcript immediately - no buffering delays
+              console.log('🔄 Processing transcript immediately:', operatorTranscript);
+              await handleFinalTranscript(operatorTranscript);
             }
           }
         });
@@ -927,13 +805,7 @@ function App() {
     try {
       shouldRestartRecognitionRef.current = false;
 
-      // Add intelligent delay to let dispatcher finish their complete thought
-      const responseDelay = calculateResponseDelay(operatorTranscript);
-      console.log(`⏱️ Adding ${responseDelay}ms delay before caller responds to: "${operatorTranscript}"`);
-      
-      await new Promise(resolve => setTimeout(resolve, responseDelay));
-      
-      // Generate caller response using enhanced context with streaming
+      // Generate caller response immediately using enhanced context with streaming
       const callerResponse = await generateEnhancedCallerResponse(operatorTranscript, true);
       
       // Clean up the pending message since we now have the final response
