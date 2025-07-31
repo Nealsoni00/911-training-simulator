@@ -2,10 +2,5 @@
   "name": "911-training-simulator",
   "version": 2,
   "buildCommand": "npm run build",
-  "outputDirectory": "build",
-  "functions": {
-    "api/*.js": {
-      "runtime": "@vercel/node@20"
-    }
-  }
+  "outputDirectory": "build"
 }
