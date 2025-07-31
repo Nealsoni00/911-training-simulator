@@ -77,6 +77,30 @@ You'll need API keys from:
 
 4. **Open**: http://localhost:3000
 
+## 💻 Local Development
+
+**Note**: Full functionality requires API keys and server deployment. For local development:
+
+1. **Clone and Install**:
+   ```bash
+   git clone <your-repo-url>
+   cd 911-training-simulator
+   npm install
+   ```
+
+2. **Development Mode**:
+   ```bash
+   npm start
+   ```
+
+3. **Limitations in Development**:
+   - ⚠️ **AI Caller**: Not available (requires deployed API endpoints)
+   - ⚠️ **Deepgram**: Not available (falls back to browser speech recognition)
+   - ⚠️ **LiveKit**: Not available (basic web audio only)
+   - ✅ **Basic Features**: Transcription, CAD interface, settings work
+
+4. **For Full Features**: Deploy to Vercel with environment variables set
+
 ## 📖 Usage
 
 1. **Load Transcript**: Paste a 911 call transcript or select from examples

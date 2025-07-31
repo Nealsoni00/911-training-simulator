@@ -9,6 +9,9 @@ class OpenAIClient {
       body: JSON.stringify(params)
     });
     if (!response.ok) {
+      if (response.status === 404 && process.env.NODE_ENV === 'development') {
+        throw new Error('OpenAI API not available in development mode. Please deploy to use AI caller responses.');
+      }
       throw new Error(`OpenAI API error: ${response.statusText}`);
     }
     return response.json();

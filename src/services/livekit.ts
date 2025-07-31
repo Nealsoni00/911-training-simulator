@@ -59,6 +59,9 @@ export class LiveKitService {
       });
       
       if (!response.ok) {
+        if (response.status === 404 && process.env.NODE_ENV === 'development') {
+          throw new Error('LiveKit API not available in development mode. Audio features may be limited.');
+        }
         throw new Error('Failed to fetch LiveKit configuration');
       }
       
@@ -99,6 +102,9 @@ export class LiveKitService {
     });
     
     if (!configResponse.ok) {
+      if (configResponse.status === 404 && process.env.NODE_ENV === 'development') {
+        throw new Error('LiveKit API not available in development mode. Audio features may be limited.');
+      }
       throw new Error('Failed to fetch LiveKit configuration');
     }
     

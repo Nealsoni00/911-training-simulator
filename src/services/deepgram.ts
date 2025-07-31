@@ -35,6 +35,11 @@ export class DeepgramService {
         });
         
         if (!response.ok) {
+          // For local development, check if we have environment variables
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('API endpoint not available in development. Add your .env file with REACT_APP_DEEPGRAM_API_KEY for local testing.');
+            throw new Error('Deepgram API not available in development mode. Please deploy to use Deepgram transcription.');
+          }
           throw new Error('Failed to fetch Deepgram API key');
         }
         
@@ -42,6 +47,9 @@ export class DeepgramService {
         this.apiKey = data.apiKey;
       } catch (error) {
         console.error('Failed to fetch Deepgram API key:', error);
+        if (process.env.NODE_ENV === 'development') {
+          throw new Error('Deepgram API not available in development mode. The app will use browser speech recognition as fallback.');
+        }
         throw new Error('Deepgram API key is required. Failed to fetch from server.');
       }
     }
@@ -70,8 +78,9 @@ export class DeepgramService {
     wsUrl.searchParams.set('profanity_filter', 'false'); // Keep original for 911 context
     wsUrl.searchParams.set('redact', 'false'); // Don't redact sensitive info
     wsUrl.searchParams.set('numerals', 'true'); // Convert numbers to digits
-    wsUrl.searchParams.set('search', 'address,street,avenue,boulevard,emergency,police,fire,ambulance'); // Keywords for better accuracy
-    wsUrl.searchParams.set('replace', 'em:them,gonna:going to,wanna:want to'); // Common speech corrections
+    wsUrl.searchParams.set('search', '911,emergency,address,street,avenue,boulevard,police,fire,ambulance,what is the address,whats the address'); // Keywords for better accuracy
+    wsUrl.searchParams.set('replace', 'em:them,gonna:going to,wanna:want to,nine one one:911,nine eleven:911'); // Common speech corrections
+    wsUrl.searchParams.set('keywords', '911:10,emergency:8,address:8,what is the address:15,whats the address:15,police:5,fire:5,ambulance:5'); // Keyword boosting
     wsUrl.searchParams.set('endpointing', '500'); // 500ms for more natural pauses
     wsUrl.searchParams.set('vad_events', 'true'); // Voice activity detection
     wsUrl.searchParams.set('multichannel', 'false'); // Single channel processing
