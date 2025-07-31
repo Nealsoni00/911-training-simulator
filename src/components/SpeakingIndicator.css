@@ -1,0 +1,101 @@
+.speaking-indicators {
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.speaker-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: white;
+  border-radius: 8px;
+  border: 2px solid #e0e0e0;
+  transition: all 0.3s ease;
+}
+
+.speaker-indicator.active {
+  border-color: #4caf50;
+  background: #e8f5e9;
+}
+
+.speaker-indicator.dispatcher.active {
+  border-color: #2196f3;
+  background: #e3f2fd;
+}
+
+.speaker-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f5f5f5;
+  transition: all 0.3s ease;
+}
+
+.speaker-indicator.active .speaker-icon {
+  background: #4caf50;
+  color: white;
+}
+
+.speaker-indicator.dispatcher.active .speaker-icon {
+  background: #2196f3;
+  color: white;
+}
+
+.speaker-icon svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
+}
+
+.speaker-label {
+  font-weight: 600;
+  color: #333;
+  min-width: 80px;
+}
+
+.sound-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 30px;
+  padding: 0 10px;
+}
+
+.sound-bar {
+  width: 4px;
+  background: #ddd;
+  border-radius: 2px;
+  transition: all 0.1s ease;
+}
+
+.sound-bar.active {
+  background: #4caf50;
+  animation: soundWave 0.6s ease-in-out infinite;
+}
+
+.speaker-indicator.dispatcher .sound-bar.active {
+  background: #2196f3;
+}
+
+.sound-bar.dynamic {
+  background: #2196f3;
+  transition: height 0.1s ease;
+}
+
+@keyframes soundWave {
+  0%, 100% {
+    height: 10%;
+  }
+  50% {
+    height: 100%;
+  }
+}

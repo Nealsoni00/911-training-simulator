@@ -1,0 +1,72 @@
+.livekit-status {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.livekit-status.connected {
+  background: #d4edda;
+  border-color: #c3e6cb;
+}
+
+.livekit-status.disconnected {
+  background: #f8d7da;
+  border-color: #f5c6cb;
+}
+
+.status-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.status-icon {
+  font-size: 12px;
+}
+
+.status-text {
+  font-weight: 600;
+  color: #333;
+}
+
+.status-details {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.detail-item {
+  display: flex;
+  gap: 4px;
+}
+
+.detail-label {
+  color: #666;
+  font-weight: 500;
+}
+
+.detail-value {
+  color: #333;
+}
+
+.detail-value.quality-excellent {
+  color: #28a745;
+}
+
+.detail-value.quality-good {
+  color: #ffc107;
+}
+
+.detail-value.quality-poor {
+  color: #dc3545;
+}
+
+.status-message {
+  color: #666;
+  font-style: italic;
+  margin-top: 4px;
+}

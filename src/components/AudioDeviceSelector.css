@@ -1,0 +1,141 @@
+.audio-device-selector {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.audio-device-selector.expanded {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.device-selector-header {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #e9ecef;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.device-selector-header h4 {
+  margin: 0;
+  color: #333;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.expand-button, .collapse-button {
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.expand-button {
+  color: #666;
+  font-weight: 500;
+}
+
+.expand-button:hover {
+  background: #dee2e6;
+}
+
+.collapse-button {
+  color: #666;
+  font-size: 18px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collapse-button:hover {
+  background: #dee2e6;
+}
+
+.device-selector-content {
+  padding: 16px;
+}
+
+.device-group {
+  margin-bottom: 16px;
+}
+
+.device-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+}
+
+.device-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+  color: #333;
+}
+
+.device-select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+}
+
+.device-test {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.test-button, .refresh-button {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: white;
+  color: #333;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.test-button:hover, .refresh-button:hover {
+  background: #f8f9fa;
+  border-color: #999;
+}
+
+.test-button {
+  background: #28a745;
+  color: white;
+  border-color: #28a745;
+}
+
+.test-button:hover {
+  background: #218838;
+  border-color: #218838;
+}
+
+.device-info {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #856404;
+  line-height: 1.4;
+}
+
+.device-info strong {
+  font-weight: 600;
+}
