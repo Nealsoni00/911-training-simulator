@@ -51,22 +51,30 @@ export class DeepgramService {
       throw new Error('Deepgram API key is required.');
     }
 
-    // Deepgram WebSocket URL with parameters for optimal 911 transcription
+    // Deepgram WebSocket URL with parameters optimized for 911 dispatch accuracy
     const wsUrl = new URL('wss://api.deepgram.com/v1/listen');
     wsUrl.searchParams.set('encoding', 'linear16');
     wsUrl.searchParams.set('sample_rate', '16000');
     wsUrl.searchParams.set('channels', '1');
     wsUrl.searchParams.set('model', 'nova-2'); // Latest model for best accuracy
+    wsUrl.searchParams.set('version', 'latest'); // Use latest version
     wsUrl.searchParams.set('language', 'en-US');
+    wsUrl.searchParams.set('tier', 'enhanced'); // Enhanced accuracy tier
     wsUrl.searchParams.set('interim_results', 'true'); // Enable partial results
-    wsUrl.searchParams.set('smart_format', 'true'); // Auto-formatting
+    wsUrl.searchParams.set('smart_format', 'true'); // Auto-formatting with numbers, dates
     wsUrl.searchParams.set('punctuate', 'true');
+    wsUrl.searchParams.set('paragraphs', 'true'); // Better sentence structure
+    wsUrl.searchParams.set('utterances', 'true'); // Better utterance detection
     wsUrl.searchParams.set('diarize', 'false'); // Single speaker for dispatcher
-    wsUrl.searchParams.set('filler_words', 'false'); // Remove ums, ahs
+    wsUrl.searchParams.set('filler_words', 'true'); // Keep ums, ahs for realism
     wsUrl.searchParams.set('profanity_filter', 'false'); // Keep original for 911 context
     wsUrl.searchParams.set('redact', 'false'); // Don't redact sensitive info
-    wsUrl.searchParams.set('endpointing', '300'); // 300ms of silence before finalizing
+    wsUrl.searchParams.set('numerals', 'true'); // Convert numbers to digits
+    wsUrl.searchParams.set('search', 'address,street,avenue,boulevard,emergency,police,fire,ambulance'); // Keywords for better accuracy
+    wsUrl.searchParams.set('replace', 'em:them,gonna:going to,wanna:want to'); // Common speech corrections
+    wsUrl.searchParams.set('endpointing', '500'); // 500ms for more natural pauses
     wsUrl.searchParams.set('vad_events', 'true'); // Voice activity detection
+    wsUrl.searchParams.set('multichannel', 'false'); // Single channel processing
 
     console.log('🔗 Connecting to Deepgram WebSocket...');
     

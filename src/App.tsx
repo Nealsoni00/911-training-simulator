@@ -216,7 +216,57 @@ function App() {
       );
     }
     
-    // Start listening for dispatcher to speak first
+    // Add initial operator greeting
+    const initialGreeting = "911, what's the address of your emergency?";
+    setMessages([{
+      role: 'operator',
+      content: initialGreeting,
+      timestamp: new Date()
+    }]);
+    
+    // Start processing the initial greeting
+    setTimeout(async () => {
+      try {
+        // Generate caller's initial response
+        const callerResponse = await conversationServiceRef.current.generateCallerResponse(
+          selectedTranscript.content,
+          initialGreeting,
+          config.cooperationLevel,
+          "Call just started, dispatcher asking for address"
+        );
+        
+        if (callerResponse && isRunningRef.current) {
+          setMessages(prev => [...prev, {
+            role: 'caller',
+            content: callerResponse,
+            timestamp: new Date()
+          }]);
+          
+          // Convert to speech and play
+          const audioBuffer = await voiceServiceRef.current?.textToSpeech(
+            callerResponse, 
+            callerVoice as 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
+          );
+          
+          if (audioBuffer) {
+            setIsCallerSpeaking(true);
+            await voiceServiceRef.current?.queueAudio(
+              audioBuffer, 
+              config.callerVolume,
+              () => setIsCallerSpeaking(true),
+              () => {
+                setIsCallerSpeaking(false);
+                setWaitingForDispatcher(true);
+              }
+            );
+          }
+        }
+      } catch (error) {
+        console.error('Failed to generate initial caller response:', error);
+      }
+    }, 1000);
+    
+    // Start listening for dispatcher to speak
     startDeepgramTranscription();
   };
 
