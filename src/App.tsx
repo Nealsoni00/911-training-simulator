@@ -229,7 +229,7 @@ function App() {
       try {
         // Generate caller's initial response
         const callerResponse = await conversationServiceRef.current.generateCallerResponse(
-          selectedTranscript.content,
+          transcript,
           initialGreeting,
           config.cooperationLevel,
           "Call just started, dispatcher asking for address"
