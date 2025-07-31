@@ -10,7 +10,15 @@ class OpenAIClient {
     });
     if (!response.ok) {
       if (response.status === 404 && process.env.NODE_ENV === 'development') {
-        throw new Error('OpenAI API not available in development mode. Please deploy to use AI caller responses.');
+        // For development, return a mock response
+        console.warn('OpenAI API not available in development. Returning mock caller response.');
+        return {
+          choices: [{
+            message: {
+              content: "This is a mock caller response for development. Deploy to get AI responses."
+            }
+          }]
+        };
       }
       throw new Error(`OpenAI API error: ${response.statusText}`);
     }
@@ -29,6 +37,14 @@ class OpenAIClient {
           })
         });
         if (!response.ok) {
+          if (response.status === 404 && process.env.NODE_ENV === 'development') {
+            // For development, return a mock audio buffer (silence)
+            console.warn('OpenAI TTS not available in development. Using silence.');
+            const silenceBuffer = new ArrayBuffer(1024);
+            return {
+              arrayBuffer: () => Promise.resolve(silenceBuffer)
+            };
+          }
           throw new Error(`OpenAI API error: ${response.statusText}`);
         }
         return {

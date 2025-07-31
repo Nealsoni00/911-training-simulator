@@ -35,10 +35,17 @@ export class DeepgramService {
         });
         
         if (!response.ok) {
-          // For local development, check if we have environment variables
+          // For local development, try to use environment variable directly
           if (process.env.NODE_ENV === 'development') {
-            console.warn('API endpoint not available in development. Add your .env file with REACT_APP_DEEPGRAM_API_KEY for local testing.');
-            throw new Error('Deepgram API not available in development mode. Please deploy to use Deepgram transcription.');
+            const envKey = process.env.REACT_APP_DEEPGRAM_API_KEY;
+            if (envKey) {
+              console.log('Using REACT_APP_DEEPGRAM_API_KEY from environment for local development');
+              this.apiKey = envKey;
+              return; // Skip the API call, use env var directly
+            } else {
+              console.warn('API endpoint not available in development. Add REACT_APP_DEEPGRAM_API_KEY to your .env file for local testing.');
+              throw new Error('Deepgram API not available in development mode. Add REACT_APP_DEEPGRAM_API_KEY to .env file.');
+            }
           }
           throw new Error('Failed to fetch Deepgram API key');
         }
