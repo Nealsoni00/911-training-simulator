@@ -158,11 +158,8 @@
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
-  color: #ffc107;
-  background: rgba(255, 193, 7, 0.1);
-  padding: 12px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 193, 7, 0.2);
+  color: #cccccc;
+  padding: 8px 0;
 }
 
 .config-stats {
