@@ -1,8 +1,8 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import { SimulationPreset } from '../types';
 
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Configure PDF.js worker - use local worker file
+pdfjsLib.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ''}/pdf.worker.min.js`;
 
 export interface ProcessedPDFResult {
   originalText: string;
