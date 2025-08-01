@@ -97,11 +97,19 @@ export class DeepgramService {
     console.log('🧪 Testing Deepgram WebSocket with proper authentication...');
     const wsUrl = new URL('wss://api.deepgram.com/v1/listen');
     
-    // Add essential parameters
+    // Add essential parameters - try different settings for better compatibility
     wsUrl.searchParams.set('encoding', 'linear16');
     wsUrl.searchParams.set('sample_rate', '16000');
     wsUrl.searchParams.set('channels', '1');
     wsUrl.searchParams.set('language', 'en-US');
+    
+    // Add additional parameters that might help with transcription
+    wsUrl.searchParams.set('model', 'nova-2');  // Use latest model
+    wsUrl.searchParams.set('smart_format', 'true');  // Enable smart formatting
+    wsUrl.searchParams.set('interim_results', 'true');  // Enable interim results
+    wsUrl.searchParams.set('utterance_end_ms', '1000');  // Shorter utterance end
+    wsUrl.searchParams.set('vad_events', 'true');  // Enable voice activity detection
+    wsUrl.searchParams.set('punctuate', 'true');  // Enable punctuation
     
     console.log('🔗 Building WebSocket URL without token (will use subprotocol auth)...');
 
@@ -123,34 +131,64 @@ export class DeepgramService {
         console.log('✅ Connected to Deepgram WebSocket - ready for immediate transcription');
         this.isConnected = true;
         this.reconnectAttempts = 0;
+        
+        // Send a test ping to verify connection
+        setTimeout(() => {
+          this.sendTestAudio();
+        }, 1000);
+        
         resolve();
       };
 
       this.websocket.onmessage = (event) => {
         try {
+          console.log('🌊 RAW Deepgram message received:', event.data);
           const data = JSON.parse(event.data);
-          console.log('📨 Deepgram message:', data);
+          console.log('📨 PARSED Deepgram message:', JSON.stringify(data, null, 2));
           
           if (data.type === 'Results') {
             const transcript = data.channel?.alternatives?.[0]?.transcript;
+            const confidence = data.channel?.alternatives?.[0]?.confidence;
             const isFinal = data.is_final;
+            const duration = data.duration;
+            const start = data.start;
             
-            console.log('📝 Transcript received:', transcript, 'isFinal:', isFinal);
+            console.log('📝 TRANSCRIPT DETAILS:');
+            console.log('   📄 Text:', transcript || '[EMPTY]');
+            console.log('   🎯 Final:', isFinal);
+            console.log('   📊 Confidence:', confidence);
+            console.log('   ⏱️ Duration:', duration);
+            console.log('   🕐 Start:', start);
+            console.log('   📋 Full alternatives:', data.channel?.alternatives);
+            console.log('   🔗 Callback exists:', !!this.onTranscriptCallback);
             
             if (transcript && this.onTranscriptCallback) {
+              console.log('✅ CALLING transcript callback with:', transcript);
               this.onTranscriptCallback(transcript, isFinal);
+            } else if (!transcript) {
+              console.log('⚠️ NO TRANSCRIPT TEXT in response');
+            } else if (!this.onTranscriptCallback) {
+              console.log('⚠️ NO CALLBACK REGISTERED for transcript');
             }
           } else if (data.type === 'SpeechStarted') {
-            console.log('🎤 Speech started detected by Deepgram');
+            console.log('🎤 SPEECH STARTED detected by Deepgram');
           } else if (data.type === 'UtteranceEnd') {
-            console.log('🎤 Utterance ended detected by Deepgram');
+            console.log('🎤 UTTERANCE ENDED detected by Deepgram');
           } else if (data.type === 'Metadata') {
-            console.log('📊 Deepgram metadata:', data);
+            console.log('📊 DEEPGRAM METADATA:', JSON.stringify(data, null, 2));
+          } else if (data.type === 'Warning') {
+            console.warn('⚠️ DEEPGRAM WARNING:', JSON.stringify(data, null, 2));
+          } else if (data.type === 'Error') {
+            console.error('❌ DEEPGRAM ERROR:', JSON.stringify(data, null, 2));
           } else {
-            console.log('🔍 Unknown Deepgram message type:', data.type, data);
+            console.log('🔍 UNKNOWN Deepgram message type:', data.type);
+            console.log('🔍 Full unknown message:', JSON.stringify(data, null, 2));
           }
         } catch (error) {
-          console.error('❌ Error parsing Deepgram message:', error, 'Raw data:', event.data);
+          console.error('❌ ERROR parsing Deepgram message:', error);
+          console.error('❌ Raw data that failed to parse:', event.data);
+          console.error('❌ Data type:', typeof event.data);
+          console.error('❌ Data length:', event.data?.length);
         }
       };
 
@@ -273,26 +311,62 @@ export class DeepgramService {
         console.log('✅ Using pre-warmed Deepgram connection');
       }
 
-      let stream: MediaStream;
+      let stream: MediaStream | undefined;
       
       if (existingStream) {
         console.log('🎤 Using existing audio stream for Deepgram');
         stream = existingStream;
       } else {
         console.log('🎤 Creating new audio stream for Deepgram');
-        // Get user media with specific constraints for Deepgram
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
+        
+        // Try different audio constraints for better Deepgram compatibility
+        const audioConstraints = [
+          // First try: Optimal settings for Deepgram
+          {
             sampleRate: 16000,
+            channelCount: 1,
+            echoCancellation: false,  // Turn off processing that might interfere
+            noiseSuppression: false,
+            autoGainControl: false
+          },
+          // Fallback: More permissive settings
+          {
+            sampleRate: { ideal: 16000 },
             channelCount: 1,
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true
+          },
+          // Last resort: Let browser choose
+          {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
           }
-        });
+        ];
+        
+        let streamCreated = false;
+        for (let i = 0; i < audioConstraints.length && !streamCreated; i++) {
+          try {
+            console.log(`🎤 Trying audio constraints ${i + 1}:`, audioConstraints[i]);
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: audioConstraints[i]
+            });
+            console.log('✅ Audio stream created with constraints', i + 1);
+            streamCreated = true;
+          } catch (error) {
+            console.warn(`⚠️ Audio constraints ${i + 1} failed:`, error);
+            if (i === audioConstraints.length - 1) {
+              throw error; // Re-throw if this was the last attempt
+            }
+          }
+        }
       }
 
       // Use Web Audio API to convert to raw PCM for Deepgram
+      if (!stream) {
+        throw new Error('Failed to obtain audio stream');
+      }
       await this.setupAudioProcessing(stream);
       
       console.log('🎤 Started Deepgram real-time transcription');
@@ -308,8 +382,34 @@ export class DeepgramService {
 
   // Set up Web Audio API processing for real-time PCM streaming
   private async setupAudioProcessing(stream: MediaStream): Promise<void> {
-    // Create AudioContext with standard sample rate to avoid resampling issues
-    const audioContext = new AudioContext();
+    // Try to create AudioContext with 16kHz sample rate, fallback to default
+    let audioContext: AudioContext;
+    try {
+      audioContext = new AudioContext({ sampleRate: 16000 });
+      console.log('✅ Created AudioContext with 16kHz sample rate');
+    } catch (error) {
+      console.warn('⚠️ Failed to create 16kHz AudioContext, using default:', error);
+      audioContext = new AudioContext();
+    }
+    
+    console.log('🎵 AUDIO CONTEXT SETUP:');
+    console.log('   📊 Sample rate:', audioContext.sampleRate);
+    console.log('   🔊 State:', audioContext.state);
+    console.log('   🎤 Stream tracks:', stream.getTracks().length);
+    console.log('   🎧 Audio tracks:', stream.getAudioTracks().length);
+    
+    // Log stream details
+    stream.getAudioTracks().forEach((track, index) => {
+      console.log(`   🎼 Track ${index}:`, {
+        id: track.id,
+        kind: track.kind,
+        label: track.label,
+        enabled: track.enabled,
+        muted: track.muted,
+        readyState: track.readyState,
+        settings: track.getSettings()
+      });
+    });
 
     const source = audioContext.createMediaStreamSource(stream);
     
@@ -317,10 +417,20 @@ export class DeepgramService {
     // Use smaller buffer size (1024) for lower latency at start
     const processor = audioContext.createScriptProcessor(1024, 1, 1);
     
+    let audioChunkCount = 0;
+    let lastLogTime = Date.now();
+    
     processor.onaudioprocess = (event) => {
       if (this.websocket && this.isConnected) {
         const inputBuffer = event.inputBuffer;
         const inputData = inputBuffer.getChannelData(0);
+        
+        // Calculate audio level for debugging
+        let sum = 0;
+        for (let i = 0; i < inputData.length; i++) {
+          sum += Math.abs(inputData[i]);
+        }
+        const audioLevel = sum / inputData.length;
         
         // Convert Float32Array to Int16Array (PCM 16-bit)
         const pcmData = new Int16Array(inputData.length);
@@ -330,8 +440,49 @@ export class DeepgramService {
           pcmData[i] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
         }
         
+        audioChunkCount++;
+        const now = Date.now();
+        
+        // Log audio data being sent every 2 seconds
+        if (now - lastLogTime > 2000) {
+          console.log('🎵 AUDIO DATA SENT TO DEEPGRAM:');
+          console.log('   📊 Chunks sent:', audioChunkCount);
+          console.log('   🎚️ Audio level:', audioLevel.toFixed(4));
+          console.log('   📏 Buffer size:', inputData.length);
+          console.log('   🔗 WebSocket state:', this.websocket.readyState);
+          console.log('   ✅ Connected:', this.isConnected);
+          
+          // Check if audio level is too low
+          if (audioLevel < 0.001) {
+            console.warn('⚠️ VERY LOW AUDIO LEVEL - microphone might be muted or not working');
+          } else if (audioLevel < 0.01) {
+            console.warn('⚠️ LOW AUDIO LEVEL - try speaking louder');
+          } else if (audioLevel > 0.1) {
+            console.log('✅ GOOD AUDIO LEVEL detected');
+          } else {
+            console.log('🔊 MODERATE AUDIO LEVEL detected');
+          }
+          
+          // Show sample of PCM data
+          console.log('   🔢 PCM sample (first 10 values):', Array.from(pcmData.slice(0, 10)));
+          const pcmArray = Array.from(pcmData);
+          console.log('   📈 PCM range:', Math.min(...pcmArray), 'to', Math.max(...pcmArray));
+          
+          lastLogTime = now;
+        }
+        
         // Send PCM data to Deepgram
-        this.websocket.send(pcmData.buffer);
+        try {
+          this.websocket.send(pcmData.buffer);
+        } catch (error) {
+          console.error('❌ ERROR sending audio to Deepgram:', error);
+        }
+      } else {
+        console.log('⚠️ SKIPPING AUDIO - WebSocket not ready:', {
+          websocketExists: !!this.websocket,
+          isConnected: this.isConnected,
+          readyState: this.websocket?.readyState
+        });
       }
     };
 
@@ -419,6 +570,44 @@ export class DeepgramService {
       case WebSocket.CLOSING: return 'closing';
       case WebSocket.CLOSED: return 'closed';
       default: return 'unknown';
+    }
+  }
+
+  // Send test audio to verify Deepgram is responding
+  private sendTestAudio(): void {
+    if (!this.websocket || !this.isConnected) {
+      console.log('⚠️ Cannot send test audio - WebSocket not connected');
+      return;
+    }
+    
+    console.log('🧪 SENDING TEST AUDIO to Deepgram...');
+    
+    // Generate a simple sine wave test audio (440Hz tone for 1 second at 16kHz)
+    const sampleRate = 16000;
+    const duration = 1; // 1 second
+    const frequency = 440; // A4 note
+    const samples = sampleRate * duration;
+    const testAudio = new Int16Array(samples);
+    
+    for (let i = 0; i < samples; i++) {
+      const time = i / sampleRate;
+      const amplitude = 0.3; // 30% volume
+      testAudio[i] = Math.sin(2 * Math.PI * frequency * time) * amplitude * 32767;
+    }
+    
+    console.log('🎵 Generated test audio:', {
+      samples: samples,
+      duration: duration,
+      frequency: frequency,
+      sampleRate: sampleRate,
+      firstSamples: Array.from(testAudio.slice(0, 10))
+    });
+    
+    try {
+      this.websocket.send(testAudio.buffer);
+      console.log('✅ Test audio sent to Deepgram');
+    } catch (error) {
+      console.error('❌ Failed to send test audio:', error);
     }
   }
 

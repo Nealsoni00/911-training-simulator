@@ -38,6 +38,7 @@ function App() {
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [pendingCallerMessage, setPendingCallerMessage] = useState<string>('');
   const [cadEntry, setCadEntry] = useState<CADEntry | null>(null);
+  const [callStartTime, setCallStartTime] = useState<Date | null>(null);
   const [partialTranscript, setPartialTranscript] = useState<string>('');
   const [isSystemWarming, setIsSystemWarming] = useState<boolean>(false);
   const [selectedAddress, setSelectedAddress] = useState<string>('');
@@ -92,13 +93,28 @@ function App() {
     await setupMicrophoneAnalyser();
     
     // Pre-warm Deepgram connection but don't start transcription yet
+    console.log('🔍 CHECKING DEEPGRAM SERVICE INITIALIZATION');
+    console.log('   🔗 Service exists:', !!deepgramServiceRef.current);
+    
     if (!deepgramServiceRef.current) {
+      console.log('🆕 CREATING NEW DEEPGRAM SERVICE');
       deepgramServiceRef.current = new DeepgramService();
+      console.log('✅ DEEPGRAM SERVICE CREATED');
       
       // Set up callbacks early so they're ready when transcription starts
+      console.log('🔍 Checking if callbacks need setup...');
+      console.log('   📞 Has callbacks:', deepgramServiceRef.current.hasCallbacks);
+      
       if (!deepgramServiceRef.current.hasCallbacks) {
+        console.log('🔧 SETTING UP CALLBACKS DURING INITIALIZATION');
         setupDeepgramCallbacks();
+        deepgramServiceRef.current.hasCallbacks = true;
+        console.log('✅ CALLBACKS SET UP AND MARKED');
+      } else {
+        console.log('✅ CALLBACKS ALREADY SET UP');
       }
+    } else {
+      console.log('✅ DEEPGRAM SERVICE ALREADY EXISTS');
     }
     
     // Pre-establish Deepgram WebSocket connection
@@ -216,6 +232,7 @@ function App() {
     shouldRestartRecognitionRef.current = true;
     setMessages([]);
     setWaitingForDispatcher(true);
+    setCallStartTime(new Date());
     
     try {
 
@@ -277,6 +294,14 @@ function App() {
     // Start transcription immediately - no delays
     console.log('🎯 Starting Deepgram transcription immediately');
     startDeepgramTranscription();
+    
+    // Give a moment for Deepgram to initialize, then start with caller's opening
+    setTimeout(() => {
+      if (isRunningRef.current && !isProcessingRef.current) {
+        console.log('🎙️ Starting simulation with caller opening statement');
+        generateInitialCallerResponse();
+      }
+    }, 2000);
   };
 
   const handleEndSimulation = async () => {
@@ -385,6 +410,33 @@ function App() {
 
 
   // Enhanced caller response system using preset instructions with streaming
+  const generateInitialCallerResponse = async () => {
+    if (!selectedPreset || !isRunningRef.current) {
+      console.log('⚠️ Cannot start initial caller response - no preset or not running');
+      return;
+    }
+
+    console.log('🎙️ Generating initial caller opening statement');
+    setWaitingForDispatcher(false);
+    isProcessingRef.current = true;
+
+    try {
+      // Use empty operator transcript for initial call - this simulates the caller starting the conversation
+      const response = await generateEnhancedCallerResponse("", true);
+      
+      if (response && response.trim() !== '' && response.trim() !== '...') {
+        console.log('✅ Initial caller response generated:', response.substring(0, 50) + '...');
+        // The generateEnhancedCallerResponse already handles adding the message and audio
+      }
+      
+    } catch (error) {
+      console.error('❌ Error generating initial caller response:', error);
+    } finally {
+      setWaitingForDispatcher(true);
+      isProcessingRef.current = false;
+    }
+  };
+
   const generateEnhancedCallerResponse = async (
     operatorTranscript: string,
     useStreaming: boolean = true
@@ -652,10 +704,21 @@ function App() {
   };
 
   const setupDeepgramCallbacks = () => {
-    if (!deepgramServiceRef.current) return;
+    console.log('🔧 SETTING UP DEEPGRAM CALLBACKS');
+    console.log('   🔗 Deepgram service exists:', !!deepgramServiceRef.current);
     
+    if (!deepgramServiceRef.current) {
+      console.error('❌ NO DEEPGRAM SERVICE REFERENCE - callbacks not set up');
+      return;
+    }
+    
+    console.log('✅ REGISTERING transcript callback with Deepgram service');
     deepgramServiceRef.current.onTranscript(async (operatorTranscript: string, isFinal: boolean) => {
-      console.log('🎯 App received transcript:', operatorTranscript, 'isFinal:', isFinal);
+      console.log('🎯 APP RECEIVED TRANSCRIPT FROM DEEPGRAM:');
+      console.log('   📄 Text:', operatorTranscript || '[EMPTY]');
+      console.log('   🎯 Final:', isFinal);
+      console.log('   📏 Length:', operatorTranscript?.length || 0);
+      console.log('   ⏰ Timestamp:', new Date().toISOString());
       
       if (!isFinal) {
         setPartialTranscript(operatorTranscript);

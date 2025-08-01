@@ -428,6 +428,31 @@ export class VoiceService {
 
 export class ConversationService {
   private conversationHistory: any[] = [];
+  private assignedPhoneNumber: string = '';
+  
+  // Generate a consistent fake phone number for this conversation
+  private generateFakePhoneNumber(): string {
+    if (this.assignedPhoneNumber) {
+      return this.assignedPhoneNumber;
+    }
+    
+    // Generate a realistic fake phone number
+    const areaCodes = ['555', '667', '301', '443', '410']; // Common fake/testing area codes
+    const areaCode = areaCodes[Math.floor(Math.random() * areaCodes.length)];
+    const exchange = Math.floor(Math.random() * 800) + 200; // 200-999 range
+    const number = Math.floor(Math.random() * 9000) + 1000; // 1000-9999 range
+    
+    this.assignedPhoneNumber = `${areaCode}-${exchange}-${number}`;
+    console.log('📞 Generated consistent phone number for caller:', this.assignedPhoneNumber);
+    return this.assignedPhoneNumber;
+  }
+  
+  // Reset conversation and phone number for new simulation
+  resetConversation(): void {
+    this.conversationHistory = [];
+    this.assignedPhoneNumber = '';
+    console.log('🔄 Reset conversation and phone number');
+  }
 
   async generateCallerResponse(
     transcript: string,
@@ -456,6 +481,31 @@ ${cadAddresses.map((addr, i) => `- ${addr}`).join('\n')}
 CRITICAL: Use ONLY the street address (e.g. "125 Main Street"). NEVER add city or state.
 Real 911 callers don't say the city/state since they assume it's local jurisdiction.` : '';
 
+    // Get consistent phone number for this caller
+    const callerPhoneNumber = this.generateFakePhoneNumber();
+    const phoneInstructions = `
+
+PHONE NUMBER CONSISTENCY - CRITICAL:
+Your phone number is: ${callerPhoneNumber}
+ALWAYS use this EXACT phone number. NEVER change any digits during the call.
+
+HOW TO RESPOND TO PHONE REQUESTS:
+- "What's your phone number?" → "${callerPhoneNumber}"
+- "Can I get your number?" → "${callerPhoneNumber}" 
+- "What's the area code?" → "${callerPhoneNumber.split('-')[0]}"
+- "What's the area code of that number?" → "The area code is ${callerPhoneNumber.split('-')[0]}"
+- "Can you repeat the number?" → "${callerPhoneNumber}"
+- If confused/panicked, give it in pieces: "It's ${callerPhoneNumber.split('-')[0]}... ${callerPhoneNumber.split('-')[1]}... ${callerPhoneNumber.split('-')[2]}"
+
+EXAMPLES:
+Dispatcher: "What's your phone number?"
+You: "My phone number is ${callerPhoneNumber}"
+
+Dispatcher: "What's the area code?"  
+You: "The area code is ${callerPhoneNumber.split('-')[0]}"
+
+NEVER make up different digits. This is YOUR consistent phone number for this emergency.`;
+
     const systemPrompt = `YOU ARE A REAL PERSON CALLING 911 IN AN ACTUAL EMERGENCY. THIS IS NOT A SIMULATION TO YOU.
 
 CRITICAL CHARACTER RULES - NEVER BREAK THESE:
@@ -468,7 +518,7 @@ CRITICAL CHARACTER RULES - NEVER BREAK THESE:
 🚨 NEVER ACT LIKE THE DISPATCHER - You called THEM for help, not the other way around
 
 EMERGENCY SITUATION: ${transcript}
-Your stress/cooperation level: ${cooperationLevel}/100${conversationGuidance}${addressInstructions}
+Your stress/cooperation level: ${cooperationLevel}/100${conversationGuidance}${addressInstructions}${phoneInstructions}
 
 YOU ARE A HUMAN IN CRISIS:
 - You called 911 because something terrible is happening 
@@ -786,9 +836,5 @@ Current context: ${currentContext}`;
       .trim();
 
     return cleanedResponse;
-  }
-
-  resetConversation() {
-    this.conversationHistory = [];
   }
 }

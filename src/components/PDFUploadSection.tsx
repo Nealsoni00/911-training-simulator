@@ -14,6 +14,7 @@ export const PDFUploadSection: React.FC<PDFUploadSectionProps> = ({
   const [processingResult, setProcessingResult] = useState<ProcessedPDFResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,55 +78,69 @@ export const PDFUploadSection: React.FC<PDFUploadSectionProps> = ({
   };
 
   return (
-    <div className="pdf-upload-section">
-      <div className="pdf-upload-header">
-        <h3>📄 Generate Training from PDF</h3>
-        <p>Upload a PDF containing a 911 call transcript to automatically create a training simulation with PII redaction.</p>
+    <div className={`pdf-upload-section ${isExpanded ? 'expanded' : 'compact'}`}>
+      <div 
+        className="pdf-upload-header" 
+        onClick={() => setIsExpanded(!isExpanded)}
+        style={{ cursor: 'pointer' }}
+      >
+        <h3>
+          📄 Generate Training from PDF 
+          <span className="expand-icon">{isExpanded ? '▼' : '▶'}</span>
+        </h3>
+        {!isExpanded && (
+          <p className="compact-description">Click to upload a PDF and create training simulation automatically</p>
+        )}
+        {isExpanded && (
+          <p>Upload a PDF containing a 911 call transcript to automatically create a training simulation with PII redaction.</p>
+        )}
       </div>
 
-      {/* File Upload */}
-      <div className="pdf-upload-area">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf"
-          onChange={handleFileSelect}
-          disabled={isProcessing}
-          className="pdf-file-input"
-          id="pdf-upload"
-        />
-        <label htmlFor="pdf-upload" className={`pdf-upload-label ${isProcessing ? 'processing' : ''}`}>
-          {isProcessing ? (
-            <>
-              <div className="loading-spinner"></div>
-              <span>Processing PDF...</span>
-            </>
-          ) : (
-            <>
-              <svg viewBox="0 0 24 24" fill="currentColor" className="upload-icon">
-                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+      {/* File Upload - only show when expanded */}
+      {isExpanded && (
+        <>
+          <div className="pdf-upload-area">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf"
+              onChange={handleFileSelect}
+              disabled={isProcessing}
+              className="pdf-file-input"
+              id="pdf-upload"
+            />
+            <label htmlFor="pdf-upload" className={`pdf-upload-label ${isProcessing ? 'processing' : ''}`}>
+              {isProcessing ? (
+                <>
+                  <div className="loading-spinner"></div>
+                  <span>Processing PDF...</span>
+                </>
+              ) : (
+                <>
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="upload-icon">
+                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                  </svg>
+                  <span>Click to upload PDF or drag and drop</span>
+                  <small>Maximum file size: 10MB</small>
+                </>
+              )}
+            </label>
+          </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="pdf-error">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z" />
               </svg>
-              <span>Click to upload PDF or drag and drop</span>
-              <small>Maximum file size: 10MB</small>
-            </>
+              <span>{error}</span>
+            </div>
           )}
-        </label>
-      </div>
 
-      {/* Error Display */}
-      {error && (
-        <div className="pdf-error">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z" />
-          </svg>
-          <span>{error}</span>
-        </div>
-      )}
-
-      {/* Processing Result Preview */}
-      {showPreview && processingResult && (
-        <div className="pdf-preview">
-          <div className="preview-header">
+          {/* Processing Result Preview */}
+          {showPreview && processingResult && (
+            <div className="pdf-preview">
+            <div className="preview-header">
             <h4>📋 Generated Training Simulation</h4>
             <div className="preview-actions">
               <button 
@@ -225,28 +240,30 @@ export const PDFUploadSection: React.FC<PDFUploadSectionProps> = ({
         </div>
       )}
 
-      {/* Usage Instructions */}
-      <div className="pdf-instructions">
-        <h4>ℹ️ How it works</h4>
-        <ul>
-          <li><strong>Upload:</strong> Select a PDF containing a 911 call transcript</li>
-          <li><strong>Processing:</strong> The system extracts text and automatically detects emergency type</li>
-          <li><strong>PII Redaction:</strong> Personal information is automatically removed for privacy</li>
-          <li><strong>Auto-naming:</strong> Simulation name is generated based on the content</li>
-          <li><strong>Training Ready:</strong> A complete simulation preset is created for immediate use</li>
-        </ul>
-        
-        <div className="supported-content">
-          <h5>📋 Supported Content</h5>
-          <p>PDFs should contain:</p>
-          <ul>
-            <li>911 call transcripts with dialogue</li>
-            <li>Case reports with emergency details</li>
-            <li>Training materials with realistic scenarios</li>
-            <li>Readable text (not scanned images)</li>
-          </ul>
-        </div>
-      </div>
+          {/* Usage Instructions */}
+          <div className="pdf-instructions">
+            <h4>ℹ️ How it works</h4>
+            <ul>
+              <li><strong>Upload:</strong> Select a PDF containing a 911 call transcript</li>
+              <li><strong>Processing:</strong> The system extracts text and automatically detects emergency type</li>
+              <li><strong>PII Redaction:</strong> Personal information is automatically removed for privacy</li>
+              <li><strong>Auto-naming:</strong> Simulation name is generated based on the content</li>
+              <li><strong>Training Ready:</strong> A complete simulation preset is created for immediate use</li>
+            </ul>
+            
+            <div className="supported-content">
+              <h5>📋 Supported Content</h5>
+              <p>PDFs should contain:</p>
+              <ul>
+                <li>911 call transcripts with dialogue</li>
+                <li>Case reports with emergency details</li>
+                <li>Training materials with realistic scenarios</li>
+                <li>Readable text (not scanned images)</li>
+              </ul>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

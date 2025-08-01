@@ -16,8 +16,11 @@ export interface ProcessedPDFResult {
 export class PDFProcessor {
   // PII patterns to redact
   private static readonly PII_PATTERNS = [
-    // Phone numbers
+    // Phone numbers (enhanced pattern)
     { pattern: /\b(?:\+?1[-.\\s]?)?\(?([0-9]{3})\)?[-.\\s]?([0-9]{3})[-.\\s]?([0-9]{4})\b/g, replacement: '555-123-XXXX' },
+    // Alternative phone formats
+    { pattern: /\b\d{3}[-.\\s]\d{3}[-.\\s]\d{4}\b/g, replacement: '555-123-XXXX' },
+    { pattern: /\b\(\d{3}\)\s?\d{3}[-.\\s]\d{4}\b/g, replacement: '(555) 123-XXXX' },
     // Social Security Numbers
     { pattern: /\b(?:\d{3}[-.\\s]?\d{2}[-.\\s]?\d{4})\b/g, replacement: 'XXX-XX-XXXX' },
     // Email addresses
@@ -26,16 +29,41 @@ export class PDFProcessor {
     { pattern: /\b(?:\d{4}[-.\\s]?){3}\d{4}\b/g, replacement: 'XXXX-XXXX-XXXX-XXXX' },
     // Driver's license (common formats)
     { pattern: /\b[A-Z]{1,2}\d{6,8}\b/g, replacement: 'DL######' },
-    // Names (when followed by specific identifiers like "DOB:", "Age:", etc.)
-    { pattern: /(?:Name|Full Name|Patient|Victim|Caller):\s*([A-Za-z\s]+)(?=\s*(?:DOB|Age|Phone|Address))/gi, replacement: 'Name: [REDACTED]' },
+    
+    // Enhanced name patterns
+    // Full names in format "FirstName LastName" when in context
+    { pattern: /(?:Name|Full Name|Patient|Victim|Caller|Complainant|Reporting Party|RP):\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/gi, replacement: 'Name: [REDACTED]' },
+    // Names in quotes or after "called" or "named"
+    { pattern: /(?:called|named|is)\s+"([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)"/gi, replacement: 'called "[REDACTED]"' },
+    // Names after Mr./Mrs./Ms./Dr.
+    { pattern: /\b(?:Mr|Mrs|Ms|Dr|Miss)\.?\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/gi, replacement: 'Mr. [REDACTED]' },
+    // Possessive names (John's, Mary's)
+    { pattern: /\b([A-Z][a-z]+)'s\b/g, replacement: '[REDACTED]\'s' },
+    
     // Addresses (street numbers and names)
     { pattern: /\b\d{1,5}\s+(?:[NSEW]\s+)?[A-Za-z\s]{2,30}(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Boulevard|Blvd|Circle|Cir|Court|Ct|Place|Pl|Way)\b/gi, replacement: '[ADDRESS REDACTED]' },
     // Full addresses with city/state/zip
     { pattern: /\b\d{1,5}\s+[A-Za-z\s]{2,30}(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Boulevard|Blvd|Circle|Cir|Court|Ct|Place|Pl|Way),?\s*[A-Za-z\s]{2,20},?\s*[A-Z]{2}\s*\d{5}(?:-\d{4})?\b/gi, replacement: '[FULL ADDRESS REDACTED]' },
-    // Dates of birth
+    
+    // Dates of birth and ages
     { pattern: /\b(?:DOB|Date of Birth|Born):\s*\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/gi, replacement: 'DOB: [REDACTED]' },
-    // Insurance/Medical record numbers
-    { pattern: /\b(?:Policy|Member|Account|Medical Record)(?:\s+#|#|\s+Number):\s*[A-Z0-9\-]{6,20}\b/gi, replacement: 'ID: [REDACTED]' }
+    { pattern: /\b(?:Age|age):\s*\d{1,3}\b/gi, replacement: 'Age: [REDACTED]' },
+    
+    // Insurance/Medical/ID numbers
+    { pattern: /\b(?:Policy|Member|Account|Medical Record|Case|Report|Badge|Employee|ID)(?:\s+#|#|\s+Number|No):\s*[A-Z0-9\-]{4,20}\b/gi, replacement: 'ID: [REDACTED]' },
+    
+    // License plates
+    { pattern: /\b[A-Z]{1,3}\d{1,4}[A-Z]{0,3}\b/g, replacement: 'XXX-####' },
+    
+    // Bank account and routing numbers
+    { pattern: /\b\d{9,17}\b/g, replacement: '[ACCOUNT REDACTED]' },
+    
+    // URLs and websites (but preserve common domains)
+    { pattern: /https?:\/\/(?!(?:google|facebook|twitter|instagram|youtube|linkedin|amazon|apple|microsoft|gmail)\.)[A-Za-z0-9.-]+\.[A-Za-z]{2,}/gi, replacement: 'https://[WEBSITE REDACTED]' },
+    
+    // Personal identifiers that might be metadata
+    { pattern: /(?:Created by|Author|Modified by|Uploaded by|User):\s*([A-Za-z0-9\s]+)/gi, replacement: 'Created by: [REDACTED]' },
+    { pattern: /(?:File path|Document path):\s*([A-Za-z0-9\\\/:\s.-]+)/gi, replacement: 'File path: [REDACTED]' }
   ];
 
   // Emergency type detection patterns
