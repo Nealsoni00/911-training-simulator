@@ -732,10 +732,18 @@ function App() {
     try {
       // Don't set up if already exists
       if (analyserRef.current && micStreamRef.current) {
+        console.log('🎤 Microphone analyser already set up, skipping');
         return;
       }
+      
+      console.log('🎤 Setting up microphone analyser...');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
+      console.log('✅ Got microphone stream:', {
+        streamId: stream.id,
+        tracks: stream.getTracks().length,
+        audioTracks: stream.getAudioTracks().length
+      });
       
       // Create new audio context if needed
       if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
@@ -834,7 +842,12 @@ function App() {
         setupDeepgramCallbacks();
       }
 
-      console.log('🚀 Calling deepgramService.startTranscription()...');
+      console.log('🚀 About to call deepgramService.startTranscription() with:', {
+        micStreamExists: !!micStreamRef.current,
+        streamActive: micStreamRef.current?.active,
+        hasAudioTracks: micStreamRef.current?.getAudioTracks().length
+      });
+      
       // Pass the existing microphone stream if available to avoid multiple getUserMedia calls
       await deepgramServiceRef.current.startTranscription(micStreamRef.current || undefined);
       setIsRecording(true);
@@ -844,7 +857,12 @@ function App() {
       console.log('📊 Connection status:', deepgramServiceRef.current.connectionStatus);
 
     } catch (error) {
-      console.error('Failed to start Deepgram transcription:', error);
+      console.error('❌ Failed to start Deepgram transcription:', error);
+      console.error('❌ Error details:', {
+        name: (error as Error).name,
+        message: (error as Error).message,
+        stack: (error as Error).stack?.slice(0, 200)
+      });
       setIsRecording(false);
     }
   };

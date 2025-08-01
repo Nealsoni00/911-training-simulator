@@ -28,10 +28,12 @@ export class DeepgramService {
 
   // Set up callbacks
   onTranscript(callback: (transcript: string, isFinal: boolean) => void) {
+    console.log('🔧 Setting up Deepgram transcript callback');
     this.onTranscriptCallback = callback;
   }
 
   onError(callback: (error: string) => void) {
+    console.log('🔧 Setting up Deepgram error callback');
     this.onErrorCallback = callback;
   }
 
@@ -256,8 +258,16 @@ export class DeepgramService {
       // Record start time
       this.startTime = Date.now();
       
+      console.log('🎯 Deepgram startTranscription called with:', {
+        existingStream: !!existingStream,
+        isConnected: this.isConnected,
+        websocketState: this.websocket?.readyState,
+        apiKeyExists: !!this.apiKey
+      });
+      
       // Connect to Deepgram WebSocket if not already connected
       if (!this.isConnected) {
+        console.log('🔌 Connecting to Deepgram WebSocket...');
         await this.connectWebSocket();
       } else {
         console.log('✅ Using pre-warmed Deepgram connection');
