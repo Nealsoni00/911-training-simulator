@@ -2,6 +2,171 @@ import React, { useState, useEffect } from 'react';
 import { SimulationPreset } from '../types';
 import './ConfigurationPage.css';
 
+// Sample real 911 transcript for guidance
+const sampleRealTranscript = `911 Caller: I'm sorry. You want me to, tell her how to
+911 Dispatcher: What time are you setting? Nine one one. What is the address of your emergency?
+911 Caller: No.
+911 Caller: I'm at Maplewood, and
+911 Caller: where am I at, baby? Maplewood and Cherry Street.
+911 Dispatcher: What's your name?
+911 Caller: Myra Callister. My husband just got jumped, and they took my car keys.
+911 Dispatcher: What's the telephone number you're calling from?
+911 Dispatcher: Was he inside the vehicle? Was—
+911 Caller: And my husband's—I think his jaw's broke,
+911 Caller: It's my cell phone number. It's 555-123-7890
+911 Caller: No. He got it. The—
+911 Caller: walk walk to go take a piss.
+911 Caller: And they jumped him.
+911 Caller: They pistol whipped him.
+911 Dispatcher: Okay.
+911 Caller: I'm in the parking lot at National First Bank.
+911 Caller: I just—I got my other car. I got two cars. I was smiling
+911 Caller: because I was taking my rental car. It's my rental car, actually.
+911 Caller: That they got the keys to. And—
+911 Dispatcher: Okay. I'm just updating this information. Give me one moment.
+911 Caller: I don't know fucking—I'm gonna have to—
+911 Caller: want me to take you to the hospital? I'm going to have to.
+911 Caller: I'm gonna have to take him to a hospital.
+911 Dispatcher: Okay. I'll alert the medic, ma'am. Just stay where you are.
+911 Caller: And what were you saying here, baby?
+911 Caller: You're gonna have to call a car. I know. I have to.
+911 Caller: Well, the parking part or not?
+911 Caller: I'm at the—the National First Bank.
+911 Dispatcher: And when did this happen? How many minutes ago did this happen?
+911 Caller: Just now, like, three minutes ago, two minutes ago. They were in the alley.
+911 Caller: Right on—they—what street is that? Elm?
+911 Dispatcher: I need to get the suspect's description. Were they Black, White, or Hispanic?
+911 Caller: What do they look like, baby? I don't know.
+911 Caller: They're Black dudes. I mean, I really didn't see much.
+911 Caller: I heard him screaming in the alley.
+911 Dispatcher: No. But they were wearing—
+911 Caller: They're all Black. Right? Yeah. All Black. And—
+911 Dispatcher: They were wearing all black. Is that correct?
+911 Dispatcher: What—
+911 Caller: Yeah. And it's a pistol. There's a metal pistol. There's two of them.
+911 Dispatcher: What color is the vehicle?
+911 Caller: My vehicle is a black—it's a black Malibu. It's parked
+911 Caller: right behind the tire shop.
+911 Dispatcher: No. The one—the—
+911 Caller: It's a rental. It's a rental.
+911 Dispatcher: The one that they took, ma'am?
+911 Caller: My—it's a black rental. It's a Malibu. It's
+911 Caller: it's still parked in the—on the street. They're about—I know they're about to take my car.
+911 Dispatcher: So they didn't take—
+911 Dispatcher: Okay. So they didn't take the vehicle, ma'am?
+911 Caller: Not yet. They have the keys to my car.
+911 Dispatcher: Okay.
+911 Caller: They're waiting. Hey. I need to go to the hospital. They wanna make a report there.
+911 Caller: He wants me to take him to the hospital.
+911 Caller: It's fucking leaking everywhere.
+911 Caller: Is that my car?
+911 Dispatcher: I'm just updating this information. Just bear with me, ma'am.
+911 Caller: No. Alright. Yeah. I just need to check your mail, and I thought it was ours.
+911 Caller: I—I gotta take him to the hospital. I got to.
+911 Dispatcher: I already stated that there's a medic already en route, ma'am.
+911 Caller: No.
+911 Dispatcher: How old is your husband?
+911 Caller: He's done. 37. I'm done.
+911 Caller: I'm fucking done.
+911 Dispatcher: I'm just updating this information. Give me one moment.
+911 Caller: I'm blocked by another car. You want me to go back and get it? I can't—I can't get into it.
+911 Dispatcher: Is the attacker still nearby?
+911 Caller: I can try and get in the car real quick. You want me to—what?
+911 Dispatcher: Is the attacker still nearby?
+911 Dispatcher: Okay. No problem.
+911 Caller: I—I don't know. I—I got out of there. I'm taking him to the hospital. I left.
+911 Dispatcher: Ma'am—
+911 Dispatcher: So do you need a medic? That's what I'm asking. Because—
+911 Dispatcher: Okay, ma'am.
+911 Caller: No. No. I don't need a medic. I'm the—I'm
+911 Caller: taking him to the hospital myself.
+911 Caller: Yes. I have to.
+911 Dispatcher: So would you like to report what happened, or you're gonna wait till you get—
+911 Dispatcher: or you're gonna wait till you get to your location?
+911 Caller: I'm sorry. I'm talking to him, and I'm talking to you.
+911 Dispatcher: I understand, but I'm putting it in for a medic. And now you're saying you don't need a—
+911 Caller: I'm going to the hospital,
+911 Dispatcher: So what is it that you need me to do? Are you gonna wait till you get to the hospital, or you
+911 Dispatcher: wanna report it now?
+911 Caller: I mean, can I report it now, and then can the
+911 Caller: cops come to the hospital and meet me?
+911 Dispatcher: Give me one moment, ma'am.
+911 Caller: I'm sorry.
+911 Dispatcher: It's okay. I just gotta exit out the screen and go to
+911 Dispatcher: police because you're already
+911 Dispatcher: gone again. Give me one moment.
+911 Caller: Baby, I'm trying. Okay?
+911 Caller: I—you want me to try around?
+911 Caller: You—you need to help me.
+911 Dispatcher: I'm just updating this information.
+911 Caller: Okay.
+911 Dispatcher: Where are the weapons now?
+911 Caller: No. What—hit—they had—
+911 Caller: their—the weapons are still on the suspects.
+911 Dispatcher: Okay.
+911 Caller: That's all I could tell you.
+911 Caller: And like I said, they are two African Americans, and they have—
+911 Caller: they're dressed in all black.
+911 Caller: And I was going—
+911 Caller: is that Rose and Elm, baby?
+911 Caller: Yeah, babe. Rose—
+911 Dispatcher: What—what—what hospital are you taking him to?
+911 Caller: I'm taking him to Central Medical University right now,
+911 Caller: It was Rose and Elm.
+911 Caller: Corner of Rose and Elm. I'm sorry. Not Maplewood.
+911 Caller: I don't really know my way around here.
+911 Dispatcher: Okay. So what is the two cross streets, ma'am?
+911 Caller: It's Rose and Elm.
+911 Caller: Oh my god. I'm here, baby. I'm trying.
+911 Caller: I'm—I'm fucking—I'm trying.
+911 Caller: I—I threw everything.
+911 Caller: I heard you screaming.
+911 Dispatcher: I'm just updating this information, ma'am.
+911 Caller: Okay.
+911 Caller: No.
+911 Caller: Oh, hey. You're calling for Joel's on-site.
+911 Dispatcher: I'm just updating everything that you already given me. Okay?
+911 Caller: Okay. Yeah. And there's Oakmart and Dollar Value right here.
+911 Dispatcher: Are you gonna stop there, or you're gonna keep going?
+911 Dispatcher: You just—okay.
+911 Caller: I'm going—I'll keep going to Central Medical.
+911 Caller: I—I don't know where anything's happening. I'm trying—
+911 Dispatcher: And you said his jaw is broken. Is that correct?
+911 Dispatcher: Fractured?
+911 Caller: Yes. Yes. It's definitely—it's definitely both.
+911 Caller: And like I said, they pistol-whipped him twice.
+911 Dispatcher: Okay.
+911 Caller: I threw all my shoulder full.
+911 Caller: And which way am I going? Keep going.
+911 Caller: Go to the one after this one.
+911 Dispatcher: I need to get the victim's description. Is he Black, White, or Hispanic?
+911 Caller: Black—oh, that's all—oh, the victim is White.
+911 Dispatcher: How old is he?
+911 Caller: He's 36.
+911 Caller: Seven. That'd be thirty-seven.
+911 Dispatcher: What's his—what's his name?
+911 Caller: James Whitman.
+911 Dispatcher: Spell his last name.
+911 Dispatcher: Okay. Thank you.
+911 Caller: J as in Joey, A M E S
+911 Dispatcher: And the only thing that was taken was the keys. Is that correct?
+911 Caller: Money.
+911 Caller: Like, a hundred and—like, $200 on him. Took his phone.
+911 Caller: They took—
+911 Caller: his wallet and his phone.
+911 Dispatcher: Okay.
+911 Dispatcher: I went ahead and updated that information. I'm going to let you go now. An officer will be dispatched
+911 Dispatcher: as soon as possible. Call us back if you get new information or need further assistance.
+911 Caller: Okay.
+911 Dispatcher: I went ahead and updated that information. They'll be out. Okay?
+911 Dispatcher: Just make sure you
+911 Dispatcher: let the doctor know once you get to the location that off—
+911 Dispatcher: that you already put a call in for officers. Okay?
+911 Caller: Okay.
+911 Dispatcher: Alright.
+911 Dispatcher: Bye bye.
+911 Caller: Thank you.`;
+
 interface ConfigurationPageProps {
   onSavePreset: (preset: SimulationPreset) => void;
   onLoadPreset: (presetId: string) => void;
@@ -264,6 +429,15 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
 
             <div className="form-group">
               <label htmlFor="realTranscript">Real 911 Call Transcript (Optional)</label>
+              <div className="transcript-controls">
+                <button
+                  className="sample-transcript-button"
+                  onClick={() => setRealTranscript(sampleRealTranscript)}
+                  type="button"
+                >
+                  Use Sample Real Transcript
+                </button>
+              </div>
               <textarea
                 id="realTranscript"
                 value={realTranscript}
