@@ -1594,6 +1594,27 @@
   dependencies:
     "@bufbuild/protobuf" "^1.10.0"
 
+"@napi-rs/canvas-darwin-arm64@0.1.74":
+  version "0.1.74"
+  resolved "https://registry.npmjs.org/@napi-rs/canvas-darwin-arm64/-/canvas-darwin-arm64-0.1.74.tgz"
+  integrity sha512-eO5Miz+ef1dEQyUMWDdcbAb1Wr7yMyxD9/CL9d4frQxO4pTTaCiMBUWup8XDPLr/g7XkSkGCZLP47xiXiyXSpQ==
+
+"@napi-rs/canvas@^0.1.74":
+  version "0.1.74"
+  resolved "https://registry.npmjs.org/@napi-rs/canvas/-/canvas-0.1.74.tgz"
+  integrity sha512-pOIyzuS+5Bz1vAhD7tdhaw5/936mMJZUn4aVajojUdjYOGSWmfpDYSgt0nQLZPZVN5GLgWgutqXPOi7Jsm3k+Q==
+  optionalDependencies:
+    "@napi-rs/canvas-android-arm64" "0.1.74"
+    "@napi-rs/canvas-darwin-arm64" "0.1.74"
+    "@napi-rs/canvas-darwin-x64" "0.1.74"
+    "@napi-rs/canvas-linux-arm-gnueabihf" "0.1.74"
+    "@napi-rs/canvas-linux-arm64-gnu" "0.1.74"
+    "@napi-rs/canvas-linux-arm64-musl" "0.1.74"
+    "@napi-rs/canvas-linux-riscv64-gnu" "0.1.74"
+    "@napi-rs/canvas-linux-x64-gnu" "0.1.74"
+    "@napi-rs/canvas-linux-x64-musl" "0.1.74"
+    "@napi-rs/canvas-win32-x64-msvc" "0.1.74"
+
 "@nicolo-ribaudo/eslint-scope-5-internals@5.1.1-v1":
   version "5.1.1-v1"
   resolved "https://registry.npmjs.org/@nicolo-ribaudo/eslint-scope-5-internals/-/eslint-scope-5-internals-5.1.1-v1.tgz"
@@ -4027,6 +4048,13 @@ debug@^2.6.0:
   integrity sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA==
   dependencies:
     ms "2.0.0"
+
+debug@^3.1.0:
+  version "3.2.7"
+  resolved "https://registry.npmjs.org/debug/-/debug-3.2.7.tgz"
+  integrity sha512-CFjzYYAi4ThfiQvizrFQevTTXHtnCqWfe7x1AhgEscTz6ZbLbfoLRLPugTQyBth6f8ZERVUSyWHFD/7Wu4t1XQ==
+  dependencies:
+    ms "^2.1.1"
 
 debug@^3.2.7:
   version "3.2.7"
@@ -7342,6 +7370,11 @@ no-case@^3.0.4:
     lower-case "^2.0.2"
     tslib "^2.0.3"
 
+node-ensure@^0.0.0:
+  version "0.0.0"
+  resolved "https://registry.npmjs.org/node-ensure/-/node-ensure-0.0.0.tgz"
+  integrity sha512-DRI60hzo2oKN1ma0ckc6nQWlHU69RH6xN0sjQTjMpChPfTYvKZdcQFfdYK2RWbJcKyUizSIy/l8OTGxMAM1QDw==
+
 node-forge@^1:
   version "1.3.1"
   resolved "https://registry.npmjs.org/node-forge/-/node-forge-1.3.1.tgz"
@@ -7745,6 +7778,21 @@ pbkdf2@^3.1.2:
     safe-buffer "^5.2.1"
     sha.js "^2.4.11"
     to-buffer "^1.2.0"
+
+pdf-parse@^1.1.1:
+  version "1.1.1"
+  resolved "https://registry.npmjs.org/pdf-parse/-/pdf-parse-1.1.1.tgz"
+  integrity sha512-v6ZJ/efsBpGrGGknjtq9J/oC8tZWq0KWL5vQrk2GlzLEQPUDB1ex+13Rmidl1neNN358Jn9EHZw5y07FFtaC7A==
+  dependencies:
+    debug "^3.1.0"
+    node-ensure "^0.0.0"
+
+pdfjs-dist@^5.4.54:
+  version "5.4.54"
+  resolved "https://registry.npmjs.org/pdfjs-dist/-/pdfjs-dist-5.4.54.tgz"
+  integrity sha512-TBAiTfQw89gU/Z4LW98Vahzd2/LoCFprVGvGbTgFt+QCB1F+woyOPmNNVgLa6djX9Z9GGTnj7qE1UzpOVJiINw==
+  optionalDependencies:
+    "@napi-rs/canvas" "^0.1.74"
 
 performance-now@^2.1.0:
   version "2.1.0"

@@ -22,6 +22,8 @@
     "livekit-server-sdk": "^2.13.1",
     "lucide-react": "^0.534.0",
     "openai": "^5.11.0",
+    "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^5.4.54",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-scripts": "5.0.1",
@@ -61,6 +63,7 @@
     "assert": "^2.1.0",
     "browserify-zlib": "^0.2.0",
     "buffer": "^6.0.3",
+    "concurrently": "^8.2.2",
     "https-browserify": "^1.0.0",
     "os-browserify": "^0.3.0",
     "path-browserify": "^1.0.1",
@@ -68,7 +71,6 @@
     "stream-browserify": "^3.0.0",
     "stream-http": "^3.2.0",
     "url": "^0.11.4",
-    "util": "^0.12.5",
-    "concurrently": "^8.2.2"
+    "util": "^0.12.5"
   }
 }

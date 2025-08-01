@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SimulationPreset } from '../types';
+import { PDFUploadSection } from './PDFUploadSection';
 import './ConfigurationPage.css';
 
 // Sample real 911 transcript for guidance
@@ -284,6 +285,27 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
     setEditingPresetId(null);
   };
 
+  // Handle PDF-generated preset
+  const handlePDFPresetGenerated = (preset: SimulationPreset) => {
+    // Fill the form with the generated preset data
+    setPresetName(preset.name);
+    setTranscript(preset.transcript);
+    setRealTranscript(preset.realTranscript || '');
+    setCallerInstructions(preset.callerInstructions);
+    setCooperationLevel(preset.config.cooperationLevel);
+    setBackgroundNoise(preset.config.backgroundNoise);
+    setBackgroundNoiseLevel(preset.config.backgroundNoiseLevel);
+    setVolumeLevel(preset.config.volumeLevel);
+    setCity(preset.config.city);
+    setState(preset.config.state);
+    
+    // Scroll to the form so user can see the populated data
+    document.querySelector('.config-main')?.scrollIntoView({ 
+      behavior: 'smooth', 
+      block: 'start' 
+    });
+  };
+
   const handleSave = () => {
     if (!presetName.trim()) {
       alert('Please enter a preset name');
@@ -379,6 +401,9 @@ export const ConfigurationPage: React.FC<ConfigurationPageProps> = ({
 
       <div className="config-content">
         <div className="config-main">
+          {/* PDF Upload Section */}
+          <PDFUploadSection onPresetGenerated={handlePDFPresetGenerated} />
+          
           {/* Basic Information */}
           <div className="config-section">
             <h2>Basic Information</h2>
